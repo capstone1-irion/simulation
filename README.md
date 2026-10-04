@@ -48,3 +48,11 @@ PX4 원본에는 모터 구동·비행제어 변경 없이 ESC 상태 발행 전
 - [`ai`](https://github.com/capstone1-irion/ai): 공통 전처리, 모델 개발과 평가
 - [`ui`](https://github.com/capstone1-irion/ui): 상태와 이상 결과 표시
 - [`docs`](https://github.com/capstone1-irion/docs): 공통 인터페이스와 통합 시연 문서
+
+## 기능 추가: 수신 전용 상시 MAVLink 기록기 추가
+
+운영 서비스와 향후 AI가 같은 PX4 원문 수집기를 재사용하도록 한다.
+
+- MavlinkRecorder의 독점 UDP bind, 최신값 사본, 타입별 수신 나이와 bounded 오류 상태를 제공한다.
+- 선택 메시지 전량 JSONL 저장, 파일별 회전, metadata/종료 summary와 정상 신호 종료를 구현한다.
+- standard/arion_cmu_v1/legacy 품질 설명을 분리하고 숨겨진 주입 설정을 원문 fields에 넣지 않는다.
