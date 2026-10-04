@@ -69,8 +69,31 @@ class ContinuousRecorderTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.c.quality_annotations('ESC_STATUS', {}, 'typo')
 
+    def test_control_quality_does_not_turn_commands_into_measurements(self):
+        """목표·구동 출력의 의미를 주석으로 구분하고 mask/원문/비유한값을 재작성하지 않는다."""
+        cases = {
+            'POSITION_TARGET_LOCAL_NED': ({'coordinate_frame': 1, 'type_mask': 1, 'x': float('nan'), 'vx': .5},
+                {'x': 'commanded_not_measured_check_frame_and_type_mask',
+                 'type_mask': 'ignored_fields_not_fault_flags'}),
+            'ATTITUDE_TARGET': ({'time_boot_ms': 0, 'type_mask': 128, 'q': [0., 0., 0., 0.], 'thrust': .5},
+                {'q': 'commanded_attitude_wxyz_check_type_mask_and_validity',
+                 'thrust': 'normalized_thrust_command_not_measured_force'}),
+            'ACTUATOR_OUTPUT_STATUS': ({'time_usec': 0, 'active': 4, 'actuator': [100., 0., float('nan')]},
+                {'actuator': 'raw_output_commands_driver_units_and_motor_mapping_unverified',
+                 'active': 'producer_specific_active_outputs_not_fault_flags'}),
+        }
+        for profile in self.c.QUALITY_PROFILES:
+            for name, (fields, expected) in cases.items():
+                with self.subTest(profile=profile, message=name):
+                    before = self.c.json_text(fields)
+                    quality = self.c.quality_annotations(name, fields, profile)
+                    self.assertEqual(quality['profile'], profile)
+                    for key, value in expected.items():
+                        self.assertEqual(quality['fields'].get(key), value)
+                    self.assertEqual(self.c.json_text(fields), before)
+
     def test_every_selected_packet_rotates_and_latest_filters(self):
-        """합성 8종·진단을 모두 저장하되 필터·시간 만료·초기화 후 최신값만 갱신한다."""
+        """합성 관측·제어 11종과 진단을 저장하되 필터·만료·reset 시각과 원문 mask를 보존한다."""
         from unittest import mock
         recorder = self.recorder(source_system=42, rotate_bytes=4096).start()
         m = self.m
@@ -81,7 +104,11 @@ class ContinuousRecorderTests(unittest.TestCase):
                     m.MAVLink_servo_output_raw_message(123, 0, *([1000] * 8)),
                     m.MAVLink_battery_status_message(0, 0, 0, 2500, [4100]*4+[65535]*6, -1, 5, -1, 90),
                     m.MAVLink_esc_info_message(0, 123, 1, 4, 0, 0, [0]*4, [0]*4, [32767]*4),
-                    m.MAVLink_esc_status_message(0, 123, [500]*4, [float('nan'), 0, 0, 0], [1]*4)]
+                    m.MAVLink_esc_status_message(0, 123, [500]*4, [float('nan'), 0, 0, 0], [1]*4),
+                    m.MAVLink_position_target_local_ned_message(123, 1, 1, float('nan'), 2, -3,
+                                                              .5, 0, 0, 0, 0, 0, 0, 0),
+                    m.MAVLink_attitude_target_message(123, 0, [1, 0, 0, 0], .5, 0, 0, .5),
+                    m.MAVLink_actuator_output_status_message(123000, 4, [100, 200, 300, 400] + [0]*28)]
         encoder = m.MAVLink(None, srcSystem=42, srcComponent=1)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sender:
             for repeat in range(3):
@@ -97,14 +124,15 @@ class ContinuousRecorderTests(unittest.TestCase):
             unknown[7:10] = (60000).to_bytes(3, 'little')
             sender.sendto(unknown, ('127.0.0.1', recorder.port))
             sender.sendto(b'garbage', ('127.0.0.1', recorder.port))
-            self.wait_count(recorder, 28)
+            before_reset = 3 * len(messages) + 4
+            self.wait_count(recorder, before_reset)
             self.assertEqual(recorder.latest('HEARTBEAT')['base_mode'], 0)
             then = time.monotonic_ns()
             with mock.patch.object(self.c.time, 'monotonic_ns', return_value=then + 6_000_000_000):
                 self.assertEqual(recorder.latest('HEARTBEAT'), {})
                 self.assertFalse(recorder.snapshot()['healthy'])
             sender.sendto(m.MAVLink_attitude_message(0, 0, 0, 0, 0, 0, 0).pack(encoder), ('127.0.0.1', recorder.port))
-            self.wait_count(recorder, 29)
+            self.wait_count(recorder, before_reset + 1)
             self.assertEqual(recorder.latest('ATTITUDE')['time_boot_ms'], 0)
             changed = recorder.latest('ATTITUDE')
             changed['time_boot_ms'] = 999
@@ -115,15 +143,23 @@ class ContinuousRecorderTests(unittest.TestCase):
         self.assertTrue(all(path.stat().st_size <= 4096 for path in files))
         records = [json.loads(line) for path in files for line in path.read_text().splitlines()]
         state = recorder.snapshot()
-        self.assertEqual(len(records), 29)
-        self.assertEqual(state['seen_total'], 30)
+        self.assertEqual(len(records), before_reset + 1)
+        self.assertEqual(state['seen_total'], len(records) + 1)
         self.assertEqual(state['unknown_count'], 1)
         self.assertEqual(state['bad_count'], 1)
-        self.assertEqual(state['latest_slots'], 8)
+        self.assertEqual(state['latest_slots'], len(messages))
+        self.assertEqual({message.get_type() for message in messages}, self.c.SELECTED)
         self.assertEqual(state['raw_file_count'], len(files))
         esc = next(record for record in records if record['message_name'] == 'ESC_STATUS')
         self.assertEqual(esc['fields']['voltage'][0], {'$float': 'nan'})
         self.assertEqual(esc['quality']['profile'], 'arion_cmu_v1')
+        for message in messages[-3:]:
+            name = message.get_type()
+            rows = [row for row in records if row['message_name'] == name]
+            self.assertEqual(len(rows), 3)
+            self.assertEqual(rows[0]['fields'], self.c.safe_json(message.to_dict()))
+            self.assertEqual(state['saved_by_type'][name], 3)
+            self.assertEqual(self.c.safe_json(recorder.latest(name)), rows[0]['fields'])
         other = next(record for record in records if record['source_component'] == 180)
         self.assertEqual(other['quality']['profile'], 'standard')
         self.assertFalse(any(isinstance(value, list) and len(value) >= 29 for value in vars(recorder).values()))

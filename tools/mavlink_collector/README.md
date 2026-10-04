@@ -38,7 +38,7 @@ cd ~/px4-workspace/simulation
 | `--rotate-bytes` | `16777216`바이트. 정수 1024 이상. JSONL 파일별 UTF-8 크기 상한 |
 | `--ulog` | 선택적 기존 파일. 경로 연관만 기록하며 읽기·복사·동일 비행 판정·시간 정렬은 하지 않음 |
 
-Source 필터는 원문을 지우지 않습니다. 선택 8종과 UNKNOWN/BAD_DATA는 **모든 송신자**에서 저장하고, 최신값/모델 프로필 적용만 제한합니다. 필터 밖 원문에는 `standard` 주석을 적용합니다. MAVLink ID와 UDP peer는 **인증 수단이 아닙니다**. 외부 bind 주소를 명시하면 외부 패킷도 받을 수 있습니다.
+Source 필터는 원문을 지우지 않습니다. 선택 11종과 UNKNOWN/BAD_DATA는 **모든 송신자**에서 저장하고, 최신값/모델 프로필 적용만 제한합니다. 필터 밖 원문에는 `standard` 주석을 적용합니다. MAVLink ID와 UDP peer는 **인증 수단이 아닙니다**. 외부 bind 주소를 명시하면 외부 패킷도 받을 수 있습니다.
 
 ## 서비스용 Python API
 
@@ -90,11 +90,13 @@ CLI는 `UTC시각-label-UUID/`를 만들고, API는 지정한 새 폴더를 만�
 
 원문은 `mavlink_raw.jsonl`부터 시작해 번호 순으로 읽습니다. 모든 파일은 exclusive-create이므로 기존 파일을 덮어쓰지 않습니다. 줄을 쓰기 전에 다음 파일로 회전하여 **각 JSONL의 바이트 크기를 상한 이내로** 유지합니다. 한 레코드 자체가 상한보다 크면 상한을 무시하거나 원문을 조용히 버리지 않고 worker 오류로 종료합니다. 너무 작은 상한을 사용하지 마세요. 회전 파일 수와 전체 디스크 사용량은 계속 늘 수 있습니다. **원문 자동 삭제/보관 정책은 이 수집기에 없으며** 서비스 운영자가 별도로 관리합니다.
 
-메모리에는 선택 타입당 최신값 하나(최대 8개), 타입별 개수, 제한된 오류만 유지합니다. 회전 경로 목록이나 raw 레코드 리스트를 누적하지 않습니다. UNKNOWN ID별 개수는 메모리 증가를 막기 위해 `UNKNOWN` 한 항목으로 집계하고 실제 ID/이름은 원문에 남깁니다. UDP 파서는 데이터그램마다 새로 만들고 최대 UDP 크기로 한정합니다. 서로 다른 데이터그램/peer의 조각을 이어 붙이지 않습니다. 잘린 끝부분은 원문 바이트를 담은 `BAD_DATA` 진단으로 저장하므로 UDP 경계를 넘어 MAVLink 프레임을 분할하는 송신 방식은 지원하지 않습니다.
+메모리에는 선택 타입당 최신값 하나(최대 11개), 타입별 개수, 제한된 오류만 유지합니다. 회전 경로 목록이나 raw 레코드 리스트를 누적하지 않습니다. UNKNOWN ID별 개수는 메모리 증가를 막기 위해 `UNKNOWN` 한 항목으로 집계하고 실제 ID/이름은 원문에 남깁니다. UDP 파서는 데이터그램마다 새로 만들고 최대 UDP 크기로 한정합니다. 서로 다른 데이터그램/peer의 조각을 이어 붙이지 않습니다. 잘린 끝부분은 원문 바이트를 담은 `BAD_DATA` 진단으로 저장하므로 UDP 경계를 넘어 MAVLink 프레임을 분할하는 송신 방식은 지원하지 않습니다.
 
 매 선택 메시지를 저장합니다(타입당 첫 메시지만 저장하는 방식이 아님):
 
-`HEARTBEAT`, `EXTENDED_SYS_STATE`, `ATTITUDE`, `LOCAL_POSITION_NED`, `SERVO_OUTPUT_RAW`, `BATTERY_STATUS`, `ESC_INFO`, `ESC_STATUS`.
+`HEARTBEAT`, `EXTENDED_SYS_STATE`, `ATTITUDE`, `LOCAL_POSITION_NED`, `SERVO_OUTPUT_RAW`, `BATTERY_STATUS`, `ESC_INFO`, `ESC_STATUS`, `POSITION_TARGET_LOCAL_NED`, `ATTITUDE_TARGET`, `ACTUATOR_OUTPUT_STATUS`.
+
+추가 3종은 PX4가 보고하는 제어 목표/구동 출력이며 `SET_*` 명령을 보내는 기능이 아닙니다. CMU 서비스는 기존 6종과 추가 3종의 총 9종을 설정·조회합니다. 이 수집기의 지원 11종 전체를 설정하는 것은 아니며, 모드에 따라 제어 토픽이 없을 수 있습니다. 합성 패킷 시험에 더해 2026-10-04 실제 로컬 SITL 비행에서 새 3종의 수신·저장을 확인했습니다. 실기체·모든 모드·AI 시간 정렬 확인으로 확대하지 않습니다. 실제 건수와 원문 단위·mask·출력 채널 및 정상 전용 학습 원칙은 [AI 계약](../../docs/ai-telemetry-contract.md)을 따릅니다.
 
 `UNKNOWN_*`, `BAD_DATA`도 저장합니다. 나머지 알려진 타입은 `seen_by_type`에 집계하지만 raw에는 저장하지 않습니다.
 
@@ -113,6 +115,8 @@ NaN/Infinity/bytes는 JSON 표준에 맞춰 `{"$float":"nan"}`, `{"$float":"inf"
 ## 품질 프로필
 
 품질은 생산 경로에 대한 **선언**입니다. 프로필 이름을 고르는 것만으로 활성 SDF/드라이버가 확인되지는 않습니다. 원문 숫자에 대한 검사/실기체 보정/AI 성능 검증과 구분하세요.
+
+모든 프로필에서 제어 목표는 측정값이 아님을 표시합니다. `POSITION_TARGET_LOCAL_NED`의 frame/type_mask, `ATTITUDE_TARGET`의 quaternion·각속도·정규화 추력/필드별 freshness, `ACTUATOR_OUTPUT_STATUS`의 드라이버별 단위·모터 대응 미확인을 주석으로 구분합니다. 이 주석은 mask 적용·좌표/단위 변환·활성 채널 판정을 수행하지 않습니다. 원문 0·NaN·마스크를 유지하며, 새 제어값을 관측 RPM/전류나 simulator 고장 정답으로 바꾸지 않습니다.
 
 | 프로필 | 적용 범위 |
 |---|---|

@@ -16,7 +16,9 @@ from collections import Counter, deque
 
 SIMULATION = Path(__file__).resolve().parents[2]
 DEFAULT_DECODER = SIMULATION.parent / 'hermes/mavlink/px4_messages.py'
-SELECTED = frozenset('HEARTBEAT EXTENDED_SYS_STATE ATTITUDE LOCAL_POSITION_NED SERVO_OUTPUT_RAW BATTERY_STATUS ESC_INFO ESC_STATUS'.split())
+SELECTED = frozenset(('HEARTBEAT EXTENDED_SYS_STATE ATTITUDE LOCAL_POSITION_NED '
+                      'SERVO_OUTPUT_RAW BATTERY_STATUS ESC_INFO ESC_STATUS '
+                      'POSITION_TARGET_LOCAL_NED ATTITUDE_TARGET ACTUATOR_OUTPUT_STATUS').split())
 
 
 def parse_args(argv=None):
@@ -120,6 +122,21 @@ def quality_annotations(name, fields, profile='standard'):
         if modeled:
             labels['failure_flags'] = 'unimplemented_not_fault_ground_truth'
             labels['error_count'] = 'unimplemented_not_fault_ground_truth'
+    elif name == 'POSITION_TARGET_LOCAL_NED':
+        labels = {key: 'commanded_not_measured_check_frame_and_type_mask'
+                  for key in ('x', 'y', 'z', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate')}
+        labels.update(coordinate_frame='required_for_setpoint_interpretation',
+                      type_mask='ignored_fields_not_fault_flags')
+    elif name == 'ATTITUDE_TARGET':
+        labels = {key: 'commanded_body_rate_rad_s_freshness_unverified'
+                  for key in ('body_roll_rate', 'body_pitch_rate', 'body_yaw_rate')}
+        labels.update(q='commanded_attitude_wxyz_check_type_mask_and_validity',
+                      thrust='normalized_thrust_command_not_measured_force',
+                      type_mask='ignored_fields_not_fault_flags',
+                      time_boot_ms='source_timestamp_not_per_field_freshness_guarantee')
+    elif name == 'ACTUATOR_OUTPUT_STATUS':
+        labels = {'actuator': 'raw_output_commands_driver_units_and_motor_mapping_unverified',
+                  'active': 'producer_specific_active_outputs_not_fault_flags'}
     return {'profile': profile, 'fields': labels}
 
 

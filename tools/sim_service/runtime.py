@@ -24,6 +24,10 @@ from .processes import PipeProcess, PtyConsole, RotatingLog
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_CATALOG = REPO / 'profiles/battery/cmu_runtime/catalog.json'
 PATH_KEYS = ('px4_source', 'px4_binary', 'plugin_build', 'decoder', 'ipc_dir', 'output_root', 'state_dir', 'catalog')
+# 송신 설정과 최신값 공개 목록의 단일 기준. 목표 Hz이며 실제 수신률 보장은 아니다.
+TELEMETRY_RATES = {'HEARTBEAT': 2, 'ESC_STATUS': 20, 'BATTERY_STATUS': 5,
+                   'LOCAL_POSITION_NED': 10, 'EXTENDED_SYS_STATE': 5, 'ATTITUDE': 10,
+                   'POSITION_TARGET_LOCAL_NED': 10, 'ATTITUDE_TARGET': 10, 'ACTUATOR_OUTPUT_STATUS': 20}
 
 
 def atomic_json(path, value):
@@ -237,9 +241,9 @@ class Runtime:
 
     def telemetry(self):
         """원문/freshness를 JSON-safe 사본으로 반환한다; 비유한 값은 태그로 보존하고 정답은 넣지 않는다."""
-        names = ['HEARTBEAT', 'ESC_STATUS', 'BATTERY_STATUS', 'LOCAL_POSITION_NED', 'EXTENDED_SYS_STATE', 'ATTITUDE']
         return {'utc_ns': time.time_ns(), 'receive_only': True,
-                'messages': {name: safe_json(self.recorder.latest(name, max_age_s=3)) if self.recorder else {} for name in names}}
+                'messages': {name: safe_json(self.recorder.latest(name, max_age_s=3)) if self.recorder else {}
+                             for name in TELEMETRY_RATES}}
 
     def status(self):
         """운영 상태·PID·데이터 경로·수신 건강을 반환한다. 이 운영 화면 전체를 AI 입력으로 쓰지 않는다."""
@@ -368,8 +372,7 @@ class Runtime:
         self.command('mavlink stop-all')
         self.command(f'mavlink start -u {output_port} -o {self.recorder.port} -t 127.0.0.1 -m custom -r 100000')
         self.command(f'mavlink start -u {input_port} -o 9 -t 127.0.0.1 -m custom -r 100000')
-        for name, hz in [('HEARTBEAT', 2), ('ESC_STATUS', 20), ('BATTERY_STATUS', 5),
-                         ('LOCAL_POSITION_NED', 10), ('EXTENDED_SYS_STATE', 5), ('ATTITUDE', 10)]:
+        for name, hz in TELEMETRY_RATES.items():
             self.command(f'mavlink stream -u {output_port} -s {name} -r {hz}')
         topic = '/arion/' + self.model_instance
         self.command('arion_motor_bridge start -t ' + topic + '/motor_state')

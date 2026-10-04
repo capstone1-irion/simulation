@@ -79,6 +79,8 @@ RUN_DIR="$(python tools/arion_sim.py status | python -c 'import json,sys; s=json
 - `HEARTBEAT.base_mode`에 무장 bit 128이 없고 `EXTENDED_SYS_STATE.landed_state`가 1(지상).
 - `recorder.healthy` 하나가 아니라 위 타입별 내용을 확인한다.
 
+서비스는 여기에 `POSITION_TARGET_LOCAL_NED`(10Hz), `ATTITUDE_TARGET`(10Hz), `ACTUATOR_OUTPUT_STATUS`(20Hz)를 더해 총 9종을 요청·조회한다. 괄호는 목표 주기이며 실제 수신 보장이 아니다. **추가 3종은 지상 시작 필수 조건이 아니며**, 모드에 따라 빈 `{}`일 수 있다. 2026-10-04 실제 로컬 SITL 비행의 수신 근거는 AI 계약 2-A절에 기록했다. 다른 환경·모드에서는 아래 비행 구간에서 다시 확인한다.
+
 터미널 B에서 실시간 값을 본다.
 
 ```bash
@@ -153,6 +155,10 @@ python tools/arion_sim.py status | tee "$CHECK_DIR/normal-hover.json"
 ```
 
 **통과 기준:** 정상 preflight 통과, 무장·공중 상태, 목표 고도 근처의 호버. 도달 판정에 여유가 있으므로 고도가 정확히 3.000m여야 한다는 조건은 없다. 거부되면 로그를 보고 중단하며 force-arm하지 않는다.
+
+**제어 문맥 추가 확인:** `normal-hover.json`의 `telemetry.messages` 및 원문에서 새 3종을 각각 확인한다. 이륙·호버·착륙 구간의 타입별 count, source 시각, 유효 필드의 변화와 ESC 응답을 비교한다. 목표값이 호버 중 일정한 것 자체는 오류가 아니다. `ATTITUDE_TARGET`의 시각은 모든 필드의 갱신 시각이 아니며, `active`를 네 모터 개수/고장 bitmask로 단정하지 않는다. 좌표계·mask·출력 단위·채널 대응은 [AI 계약 5-B절](ai-telemetry-contract.md#5-b-새-제어-문맥의-필드와-해석)을 따른다. 하나가 없거나 의미가 불분명하면 기존 비행 성공과 별개로 해당 제어 채널을 미확인으로 남긴다.
+
+이 가이드 전체는 프로파일 전환·이상 주입을 포함하는 **기능 시험용**이다. 정상 전용 학습 데이터는 초기 정상 기준·모터 이상 없음의 별도 run으로 수집한다. 이 시험 run 전체를 정상 라벨로 넣지 않는다. 옆 이동·회전 등의 자동 임무 수집기는 이번 제어 관측 추가에 포함되지 않는다.
 
 ### 5-B. 모터 1부터 4까지 — 한 번에 하나
 
@@ -322,6 +328,7 @@ for path in paths:
         sources.add((row["source_system"], row["source_component"]))
 required = {"ESC_STATUS", "BATTERY_STATUS", "HEARTBEAT", "ATTITUDE",
             "LOCAL_POSITION_NED", "EXTENDED_SYS_STATE"}
+controls = ("POSITION_TARGET_LOCAL_NED", "ATTITUDE_TARGET", "ACTUATOR_OUTPUT_STATUS")
 checks = {
     "raw_files_exist": bool(paths),
     "counts_equal_summary": dict(counts) == summary["saved_by_type"],
@@ -336,12 +343,14 @@ checks = {
         and result.get("group_alive") is False and not result.get("error")
         for result in cleanup.values()),
 }
-print(json.dumps({"counts": dict(counts), "checks": checks}, indent=2))
+print(json.dumps({"counts": dict(counts), "checks": checks,
+                  "control_counts": {name: counts[name] for name in controls}}, indent=2))
 raise SystemExit(0 if all(checks.values()) else 1)
 PY
 ```
 
 - `checks`가 모두 `true`면 이 파일 정합성 확인은 통과다. 하나라도 `false`면 해당 raw/summary/metadata를 조사한다. 성공 건수를 과거의 2,615개에 고정하지 않는다.
+- `control_counts`는 추가 3종을 따로 보여준다. 모두 양수인지와 5-A절의 의미/갱신을 함께 확인한다. **기존 6종 파일 검사 통과는 제어 3종 통과가 아니다.** 예전 6종 run은 이 값들이 0일 수 있다. 모드별 미수신도 0으로 표시하되 제어값 0을 수신한 것으로 해석하지 않는다.
 - 원문·metadata·`groundtruth.events.jsonl*`·프로세스 로그·`service.summary.json`과 `$CHECK_DIR`를 함께 보관한다. 원본 로그를 덮어쓰지 않는다.
 - 파일 회전은 파일 하나의 상한이지 전체 디스크 보관 상한이 아니다. 실행 중인 로그를 삭제하지 않는다.
 
@@ -372,10 +381,11 @@ python tools/arion_sim.py gui
 
 | 항목 | 결과 | run/로그/관측 구간 |
 |---|---|---|
-| Disarmed 시작·6메시지 수신·watch 두 형식 | 미실행 | |
+| Disarmed 시작·기존 6메시지 수신·watch 두 형식 | 미실행 | |
 | 4프로파일 선택과 reset/restore 차이 | 미실행 | |
 | 7초 pause/resume·수신 복귀 | 미실행 | |
 | 정상 기준 이륙·호버 | 미실행 | |
+| 추가 제어 3종 각각의 수신·원문 보존·시각/단위/mask/모터 대응 | 미실행 | |
 | 모터1 fault/clear | 미실행 | |
 | 모터2 fault/clear | 미실행 | |
 | 모터3 fault/clear | 미실행 | |
@@ -393,7 +403,9 @@ python tools/arion_sim.py gui
 
 ### 11-A. 자동 시험의 범위
 
-2026-10-04 기준 추적 소스를 Git 목록·AST·CMake로 집계하면 **unittest 16모듈/126메서드**, **CTest 기본 3개·coupled 옵션 ON일 때 8개**, 별도 **compile-only 계약 1개**다. 이것은 소스의 시험 수이지 이번에 실행·통과한 수가 아니다. `subTest` 반복도 별도 메서드로 더하지 않았다.
+2026-10-04 기준 제어 문맥 수집 추가 후 추적 소스를 Git 목록·AST·CMake로 집계하면 **unittest 16모듈/128메서드**, **CTest 기본 3개·coupled 옵션 ON일 때 8개**, 별도 **compile-only 계약 1개**다. 이것은 소스의 시험 수이지 이번에 실행·통과한 수가 아니다. `subTest` 반복도 별도 메서드로 더하지 않았다.
+
+이번 추가에서 실행한 것은 collector 전체와 서비스 telemetry/정책/world-reset/종료의 **집중 17시험**이다. 합성 UDP와 mock 경계가 통과했으며 PX4/Gazebo 비행·전체 자동 회귀를 다시 수행한 것은 아니다. 아래 표의 사용자 실행 결과는 별도로 남긴다.
 
 주의할 점:
 
@@ -522,9 +534,9 @@ python -B -m unittest discover -s tools/mavlink_collector \
 | `test_power_flight_analysis` | 2 | 합성 데이터의 판정 함수; 실제 비행 아님 |
 | `test_px4_console` | 2 | Python PTY fixture; 실제 PX4 아님 |
 | `test_runtime_files` | 4 | 합성 ELF/IPC·소유자 불명 거부 |
-| `test_sim_service` | 16 | 서비스 정책·API·파일·mock world-reset |
+| `test_sim_service` | 17 | 서비스 정책·9종 stream 설정/제어 API·파일·mock world-reset |
 | `test_sitl_overlay` | 7 | 복사 소스 변환/packaging·좁은 C++ seam |
-| `tools/mavlink_collector/test_continuous_collector` | 9 | 합성 UDP·원문·오류·시그널 |
+| `tools/mavlink_collector/test_continuous_collector` | 10 | 합성 UDP·11종 원문/제어 품질·오류·시그널 |
 
 ### 11-E. 실제 Gazebo/PX4 시험 — 순차 선택
 
