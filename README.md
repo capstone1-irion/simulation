@@ -72,3 +72,11 @@ PX4 원본에는 모터 구동·비행제어 변경 없이 ESC 상태 발행 전
 - 초기 VAH01/17/27 정상6프로파일과 원본 추적·재생 도구를 보존해 공개한다.
 - 전체 VAH01 RPT에서 상대100/95.027445/90.422638/84.812594% 네 구간을 선택한다.
 - 용량·effective DC1초 저항·각101점 OCV등가곡선과 catalog/provenance·재생성 도구를 추가한다.
+
+## 기능 추가: joint 부하·CMU 배터리·모터 이상 제어 연동
+
+비행 중 실제 Gazebo joint 부하를 선택 배터리와 모터별 이상 시나리오에 연결한다.
+
+- joint RPM과16V bench 전류 lookup, 네 모터 합+보조0.5A, 소비량/SOC/전압 강하를 계산한다.
+- CMU 프로파일 선택, 모터별 current/RPM보고 scale, clear/reset/restore를 제공한다.
+- 공유 mailbox에 명령을 넣고 PostUpdate에서 적용하며 accepted/applied revision·취소·generation을 구분한다.
