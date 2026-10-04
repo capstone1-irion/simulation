@@ -56,3 +56,11 @@ PX4 원본에는 모터 구동·비행제어 변경 없이 ESC 상태 발행 전
 - MavlinkRecorder의 독점 UDP bind, 최신값 사본, 타입별 수신 나이와 bounded 오류 상태를 제공한다.
 - 선택 메시지 전량 JSONL 저장, 파일별 회전, metadata/종료 summary와 정상 신호 종료를 구현한다.
 - standard/arion_cmu_v1/legacy 품질 설명을 분리하고 숨겨진 주입 설정을 원문 fields에 넣지 않는다.
+
+## 기능 추가: 외부 배터리 입력과 격리 SITL overlay 추가
+
+배터리 모델 출력을 기존 PX4 외부 배터리 수신 경로로 전달한다.
+
+- 배터리9필드 계약·sim-time 발행 시계·고정 Battery Plugin을 추가한다.
+- sender가 BATTERY_STATUS만 PX4에 송신하며 duration0/stale wait·sim-time 되감김·신호 종료를 지원한다.
+- 배터리 수신/재송신 변환과 POSIX IPC 위치를 별도 overlay에 적용하는 빌더를 제공한다.
