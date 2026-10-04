@@ -80,3 +80,11 @@ PX4 원본에는 모터 구동·비행제어 변경 없이 ESC 상태 발행 전
 - joint RPM과16V bench 전류 lookup, 네 모터 합+보조0.5A, 소비량/SOC/전압 강하를 계산한다.
 - CMU 프로파일 선택, 모터별 current/RPM보고 scale, clear/reset/restore를 제공한다.
 - 공유 mailbox에 명령을 넣고 PostUpdate에서 적용하며 accepted/applied revision·취소·generation을 구분한다.
+
+## 기능 추가: 부하 연동 비행 관찰·수집 도구 추가
+
+정상 부하 모델의 실제 비행 경로를 관찰하고 운영 서비스와 별도의 재현 도구를 보존한다.
+
+- standalone 서버에 비행용 IMU/기압/GPS/자기장 시스템을 명시하는 설정을 추가한다.
+- power observer, 일회성 coupled flight 도구, 원문 분석 및 안전한 소유 프로세스 정리 경로를 제공한다.
+- 부팅 뒤 RC/GCS 정책 readback·정상 preflight·이륙/착륙·관측/정답 분리 계약을 문서화한다.

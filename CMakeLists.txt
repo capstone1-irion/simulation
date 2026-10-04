@@ -58,6 +58,9 @@ if(ARION_BUILD_COUPLED_POWER)
     target_include_directories(coupled_power_model_test PRIVATE include)
     target_compile_options(coupled_power_model_test PRIVATE -Wall -Wextra -Werror)
     add_test(NAME coupled_power_model COMMAND coupled_power_model_test)
+    add_executable(arion_power_observer tools/power_observer.cpp)
+    target_link_libraries(arion_power_observer PRIVATE gz-transport13::core)
+    target_compile_options(arion_power_observer PRIVATE -Wall -Wextra -Werror)
 
     # 운영 제어기: Plugin의 요청 수락과 실제 적용 revision을 구분한다.
     add_executable(arion_power_control tools/power_control.cpp)
