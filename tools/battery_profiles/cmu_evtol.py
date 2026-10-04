@@ -438,6 +438,7 @@ def main(argv=None):
                 for p in build_profiles(cell, rows):
                     p["metadata"]["source_integrity"] = provenance
                     profiles.append(p)
+                del rows
             write_bundle(profiles, args.output)
             result = verify_bundle(args.output)
         else:

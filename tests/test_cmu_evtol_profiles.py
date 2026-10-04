@@ -93,6 +93,47 @@ def assert_bundle_metadata_rejected(test, keys, value, index=0):
             m.verify_bundle(output)
 
 
+class GeneratorMemoryTest(unittest.TestCase):
+    def test_source_rows_are_released_between_cells(self):
+        """합성 CLI seam: 다음 셀 읽기·번들 쓰기 전에 원행을 해제하고 6개 결과는 보존한다."""
+        import contextlib
+        import io
+        import tempfile
+        import weakref
+        from unittest.mock import patch
+        m = module()
+        references = []
+        captured = []
+        expected = []
+        for cell in m.SPLITS:
+            for profile in m.build_profiles(cell, initial_rows()):
+                profile['metadata']['source_integrity'] = {'test_fixture': 'synthetic_NOT_CMU', 'cell': cell}
+                expected.append(profile)
+
+        class Rows(list):
+            """원본 목록의 수명만 관찰하는 합성 weakref fixture."""
+
+        def read_rows(path, cell):
+            self.assertTrue(all(ref() is None for ref in references), 'previous source rows retained')
+            rows = Rows(initial_rows())
+            references.append(weakref.ref(rows))
+            return rows, {'test_fixture': 'synthetic_NOT_CMU', 'cell': cell}
+
+        def capture(profiles, output):
+            self.assertTrue(all(ref() is None for ref in references), 'last source rows retained')
+            captured.extend(profiles)
+
+        with tempfile.TemporaryDirectory(dir=os.environ.get('ARION_BATTERY_TEST_ROOT')) as d, \
+                patch.object(m, 'read_source', read_rows), patch.object(m, 'write_bundle', capture), \
+                patch.object(m, 'verify_bundle', return_value={'passed': True, 'synthetic': True}), \
+                contextlib.redirect_stdout(io.StringIO()) as stdout:
+            self.assertEqual(m.main(['generate', '--sources', d, '--output', str(Path(d) / 'unused')]), 0)
+            self.assertEqual(list(Path(d).iterdir()), [])
+        self.assertEqual(captured, expected)
+        self.assertEqual(len(references), 3)
+        self.assertEqual(stdout.getvalue(), '{"passed": true, "synthetic": true}\n')
+
+
 class InitialSelectionTests(unittest.TestCase):
     def test_only_initial_reference_and_first_complete_mission_are_selected(self):
         self.assertTrue(MODULE_PATH.is_file(), "CMU initial profile implementation is missing")

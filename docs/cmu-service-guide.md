@@ -78,6 +78,8 @@ python tools/arion_sim.py watch --json
 
 이는 주기적으로 조회한 현재값이며 동일 메시지가 반복될 수 있다. 수집 대상 메시지의 수신 기록을 대신하지 않는다. 해당 메시지의 실제 수신 순서·시각을 보존한 데이터는 `run_dir`의 `telemetry/mavlink_raw*.jsonl`을 사용한다. 원문 `BATTERY_STATUS` 전압은 mV, 전류는 cA이며 일반 `watch`만 V/A로 표시하므로 두 형식을 혼동하지 않는다.
 
+`NaN`, 양/음의 무한대는 원문 JSONL과 같은 `{"$float": "nan"}`, `{"$float": "inf"}`, `{"$float": "-inf"}` 태그로 표시한다. 0이나 정상 측정값으로 치환하지 않는다. `status`의 텔레메트리와 `watch --json`에도 같은 표현을 사용하며, 수집기 내부의 원래 수치와 유한 sentinel은 보존한다.
+
 ### 목표 3m 이륙·호버·착륙
 
 이륙은 별도 명령이다. 정상 preflight 검사를 통과한 뒤 목표 상대고도 근처에서 호버하는지 기다린다. 지원 고도 범위는 1~10m다. 도달 판정에는 고도 여유와 수직 속도 조건이 있으므로 명령 성공을 정확히 3.000m에 정지했다는 뜻으로 읽지 않는다.
@@ -257,6 +259,8 @@ python tools/arion_sim.py status
 ```
 
 이미 지상 Disarmed라면 `land`는 생략한다. pause 상태라면 먼저 `resume`한다. 공중에서 `stop`은 거부되므로 먼저 착륙한다. 정상 종료 판단은 `state: stopped`, 오류 목록, `cleanup`과 `service.summary.json`을 함께 확인한다. 중지 요청 수락만으로 모든 자원 정리가 끝났다고 해석하지 않는다.
+
+수집기 최종 summary 쓰기 실패나 종료 후 남아 있는 수신 worker도 서비스 오류로 처리한다. 이 경우 `state: failed`, `ok: false`와 실패 종료 코드가 반환되므로 수집기 하위 오류를 확인한다.
 
 서비스는 자신이 시작한 PID 그룹과 해당 instance의 socket을 대상으로 정리한다. 다른 Gazebo/PX4를 전역 종료하는 명령은 쓰지 않는다. 이전 소유자가 불명확한 lock/socket이 있다는 오류가 나면 파일을 바로 지우거나 중복 서비스를 띄우지 말고 해당 실행의 상태와 로그부터 확인한다.
 

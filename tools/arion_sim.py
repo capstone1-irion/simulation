@@ -3,7 +3,6 @@
 import argparse
 import json
 import math
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -11,7 +10,7 @@ import time
 
 from sim_service.control_api import request
 from sim_service.model_config import validate_catalog
-from sim_service.runtime import DEFAULT_CATALOG, REPO, Runtime, atomic_json, load_config, validate_config
+from sim_service.runtime import DEFAULT_CATALOG, REPO, Runtime, load_config, validate_config
 
 
 def parse_args(argv=None):
