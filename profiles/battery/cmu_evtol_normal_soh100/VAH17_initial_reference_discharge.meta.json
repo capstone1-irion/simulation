@@ -1,0 +1,97 @@
+{
+  "absolute_soh_certified": false,
+  "baseline_capacity_ah": 3.112055598801932,
+  "baseline_capacity_time_basis": "source_time_s_seconds",
+  "capacity_multiplier": 1.0,
+  "classification": "normal_initial_reference",
+  "duration_s": 18390.55087350424,
+  "electrical_scope": "single_cell_no_pack_scaling",
+  "health_basis": "relative_initial_reference_capacity",
+  "injected_degradation": false,
+  "interpolation": "none",
+  "kind": "initial_reference_discharge",
+  "mission_phase_order": [],
+  "observable_fields": [
+    "voltage_v",
+    "current_a",
+    "temperature_c"
+  ],
+  "runtime_provenance": "CMU_laboratory_not_PX4_telemetry",
+  "sample_count": 18396,
+  "soc_status": "not_reported_by_source",
+  "soh_percent": 100.0,
+  "source_cell": "VAH17",
+  "source_current_conversion": "current_a = -I_mA / 1000",
+  "source_dataset": "CMU_eVTOL_v3",
+  "source_integrity": {
+    "licence": "CC BY 4.0",
+    "original_file_bytes": 65550764,
+    "original_repository_md5": "30419d4152fd0a1cd00f4725cbdcfc49",
+    "source_bytes": 3145641,
+    "source_dataset_doi": "10.1184/R1/14226830.v3",
+    "source_download_scope": "verified_initial_http_ranges",
+    "source_file": "VAH17.csv",
+    "source_sha256": "aa5abd4560d5754d19c1e91e42a9a78bfade3cd4535a11771da1cd2e47821997",
+    "source_units": {
+      "Ecell_V": "V",
+      "I_mA": "mA",
+      "Temperature__C": "degC",
+      "time_s": "s"
+    },
+    "whole_file_md5_verified_locally": false
+  },
+  "source_step_spans": [
+    {
+      "profile_row_count": 3601,
+      "profile_row_start": 0,
+      "source_row_count": 3601,
+      "source_row_start": 265,
+      "source_time_end_s": 11517.0105470286,
+      "source_time_start_s": 7917.06637604046,
+      "tester_cycle_number": 0,
+      "tester_segment": 3
+    },
+    {
+      "profile_row_count": 31,
+      "profile_row_start": 3601,
+      "source_row_count": 31,
+      "source_row_start": 3866,
+      "source_time_end_s": 11547.0105484536,
+      "source_time_start_s": 11517.0125470287,
+      "tester_cycle_number": 0,
+      "tester_segment": 4
+    },
+    {
+      "profile_row_count": 7201,
+      "profile_row_start": 3632,
+      "source_row_count": 7201,
+      "source_row_start": 3897,
+      "source_time_end_s": 18747.0088904351,
+      "source_time_start_s": 11547.0125484536,
+      "tester_cycle_number": 0,
+      "tester_segment": 5
+    },
+    {
+      "profile_row_count": 31,
+      "profile_row_start": 10833,
+      "source_row_count": 31,
+      "source_row_start": 11098,
+      "source_time_end_s": 18777.00889186,
+      "source_time_start_s": 18747.0108904352,
+      "tester_cycle_number": 0,
+      "tester_segment": 6
+    },
+    {
+      "profile_row_count": 7532,
+      "profile_row_start": 10864,
+      "source_row_count": 7532,
+      "source_row_start": 11129,
+      "source_time_end_s": 26307.6172495447,
+      "source_time_start_s": 18777.0108918601,
+      "tester_cycle_number": 0,
+      "tester_segment": 7
+    }
+  ],
+  "split": "validation",
+  "time_field": "elapsed_s"
+}

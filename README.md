@@ -64,3 +64,11 @@ PX4 원본에는 모터 구동·비행제어 변경 없이 ESC 상태 발행 전
 - 배터리9필드 계약·sim-time 발행 시계·고정 Battery Plugin을 추가한다.
 - sender가 BATTERY_STATUS만 PX4에 송신하며 duration0/stale wait·sim-time 되감김·신호 종료를 지원한다.
 - 배터리 수신/재송신 변환과 POSIX IPC 위치를 별도 overlay에 적용하는 빌더를 제공한다.
+
+## 기능 추가: CMU 정상·열화 4단계 배터리 자료 추가
+
+임의 SOH 축소 대신 실제 CMU v3 같은 셀의 열화 구간으로 선택형 모델 파라미터를 만든다.
+
+- 초기 VAH01/17/27 정상6프로파일과 원본 추적·재생 도구를 보존해 공개한다.
+- 전체 VAH01 RPT에서 상대100/95.027445/90.422638/84.812594% 네 구간을 선택한다.
+- 용량·effective DC1초 저항·각101점 OCV등가곡선과 catalog/provenance·재생성 도구를 추가한다.

@@ -1,0 +1,97 @@
+{
+  "absolute_soh_certified": false,
+  "baseline_capacity_ah": 3.0894283947210934,
+  "baseline_capacity_time_basis": "source_time_s_seconds",
+  "capacity_multiplier": 1.0,
+  "classification": "normal_initial_reference",
+  "duration_s": 18328.68287056565,
+  "electrical_scope": "single_cell_no_pack_scaling",
+  "health_basis": "relative_initial_reference_capacity",
+  "injected_degradation": false,
+  "interpolation": "none",
+  "kind": "initial_reference_discharge",
+  "mission_phase_order": [],
+  "observable_fields": [
+    "voltage_v",
+    "current_a",
+    "temperature_c"
+  ],
+  "runtime_provenance": "CMU_laboratory_not_PX4_telemetry",
+  "sample_count": 18334,
+  "soc_status": "not_reported_by_source",
+  "soh_percent": 100.0,
+  "source_cell": "VAH01",
+  "source_current_conversion": "current_a = -I_mA / 1000",
+  "source_dataset": "CMU_eVTOL_v3",
+  "source_integrity": {
+    "licence": "CC BY 4.0",
+    "original_file_bytes": 110884708,
+    "original_repository_md5": "5b0ac8963f1d161d4b74c731f8d8640a",
+    "source_bytes": 3145655,
+    "source_dataset_doi": "10.1184/R1/14226830.v3",
+    "source_download_scope": "verified_initial_http_ranges",
+    "source_file": "VAH01.csv",
+    "source_sha256": "07ba5c1e3427e9b8dc4c10f7017fcf5aa215f7ff989e7a1a6a0b4b7d04462e90",
+    "source_units": {
+      "Ecell_V": "V",
+      "I_mA": "mA",
+      "Temperature__C": "degC",
+      "time_s": "s"
+    },
+    "whole_file_md5_verified_locally": false
+  },
+  "source_step_spans": [
+    {
+      "profile_row_count": 3601,
+      "profile_row_start": 0,
+      "source_row_count": 3601,
+      "source_row_start": 786,
+      "source_time_end_s": 11447.4085437227,
+      "source_time_start_s": 7847.46037273435,
+      "tester_cycle_number": 0,
+      "tester_segment": 3
+    },
+    {
+      "profile_row_count": 31,
+      "profile_row_start": 3601,
+      "source_row_count": 31,
+      "source_row_start": 4387,
+      "source_time_end_s": 11477.4085451476,
+      "source_time_start_s": 11447.4105437228,
+      "tester_cycle_number": 0,
+      "tester_segment": 4
+    },
+    {
+      "profile_row_count": 7201,
+      "profile_row_start": 3632,
+      "source_row_count": 7201,
+      "source_row_start": 4418,
+      "source_time_end_s": 18677.4068871292,
+      "source_time_start_s": 11477.4105451477,
+      "tester_cycle_number": 0,
+      "tester_segment": 5
+    },
+    {
+      "profile_row_count": 31,
+      "profile_row_start": 10833,
+      "source_row_count": 31,
+      "source_row_start": 11619,
+      "source_time_end_s": 18707.4068885541,
+      "source_time_start_s": 18677.4088871293,
+      "tester_cycle_number": 0,
+      "tester_segment": 6
+    },
+    {
+      "profile_row_count": 7470,
+      "profile_row_start": 10864,
+      "source_row_count": 7470,
+      "source_row_start": 11650,
+      "source_time_end_s": 26176.1432433,
+      "source_time_start_s": 18707.4088885542,
+      "tester_cycle_number": 0,
+      "tester_segment": 7
+    }
+  ],
+  "split": "train",
+  "time_field": "elapsed_s"
+}
