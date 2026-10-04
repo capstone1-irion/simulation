@@ -26,6 +26,7 @@
 |---|---|
 | 모터 관측 | Gazebo joint → Plugin → Gazebo Transport → `arion_motor_bridge` → uORB `esc_status` → PX4 MAVLink → 수집기 |
 | 배터리 관측 | 모터 전류 합과 보조 부하 → CMU 기반 모델 → sender → PX4 외부 배터리 수신부 → uORB `battery_status` → PX4 MAVLink → 수집기 |
+| 제어 문맥 | PX4 기존 제어 목표·구동 출력 → `POSITION_TARGET_LOCAL_NED`, `ATTITUDE_TARGET`, `ACTUATOR_OUTPUT_STATUS` → 수집기. 조종 명령 송신 기능이 아님 |
 | 사용자 제어 | CLI → 같은 사용자 전용 UNIX socket → 서비스가 소유한 PX4 콘솔 또는 Gazebo 제어 서비스 |
 | 시나리오 정답 | 프로파일·용량·저항·주입 배율·제어 시점 → 별도 실행 metadata와 `groundtruth.events.jsonl*` |
 
@@ -79,6 +80,8 @@ python tools/arion_sim.py watch --json
 이는 주기적으로 조회한 현재값이며 동일 메시지가 반복될 수 있다. 수집 대상 메시지의 수신 기록을 대신하지 않는다. 해당 메시지의 실제 수신 순서·시각을 보존한 데이터는 `run_dir`의 `telemetry/mavlink_raw*.jsonl`을 사용한다. 원문 `BATTERY_STATUS` 전압은 mV, 전류는 cA이며 일반 `watch`만 V/A로 표시하므로 두 형식을 혼동하지 않는다.
 
 `NaN`, 양/음의 무한대는 원문 JSONL과 같은 `{"$float": "nan"}`, `{"$float": "inf"}`, `{"$float": "-inf"}` 태그로 표시한다. 0이나 정상 측정값으로 치환하지 않는다. `status`의 텔레메트리와 `watch --json`에도 같은 표현을 사용하며, 수집기 내부의 원래 수치와 유한 sentinel은 보존한다.
+
+`watch --json`과 `status`에는 기존 6종에 더해 제어 문맥 3종의 최신값이 공개된다. 요청 목표는 위치/속도 목표 10Hz, 자세/추력 목표 10Hz, actuator 출력 20Hz이며 수신 보장 주기가 아니다. 일반 `watch`의 표시 형식은 그대로다. **2026-10-04 실제 로컬 SITL에서 새 3종의 수신·저장·두 조회 경로를 확인**했다. 상세 run·건수·한계는 [AI 계약](ai-telemetry-contract.md) 2-A절에 있다. `status`는 `telemetry.messages`, `watch --json`은 최상위 `messages`로 읽는다. 지상이나 해당 제어기가 비활성인 모드에서는 `{}`일 수 있어 지상 시작 필수 조건으로 사용하지 않는다. 부하 AI에 사용하기 전 단위·mask·모터 대응과 source 시각을 확인한다. 기존 서비스 실행 중 코드를 바꿨다면 먼저 착륙·정상 종료하고 다시 시작한다.
 
 ### 목표 3m 이륙·호버·착륙
 

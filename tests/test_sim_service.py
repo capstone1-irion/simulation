@@ -199,6 +199,38 @@ class PowerStatusTest(unittest.TestCase):
 
 
 class ServiceTelemetryTest(unittest.TestCase):
+    def test_start_configures_control_streams_without_requiring_them_on_ground(self):
+        """합성 프로세스 경계: 9종 stream 설정과 기존 지상 준비 조건을 함께 보존한다."""
+        from unittest.mock import Mock, patch
+        m = importlib.import_module('sim_service.runtime')
+        collector = importlib.import_module('mavlink_collector.collector')
+        rt = m.Runtime({'px4_binary': '/synthetic/bin/px4', 'instance': 35,
+                        'plugin_build': '/synthetic/plugins', 'rotate_bytes': 65536}, synthetic_catalog())
+        rt.folder = Path('/synthetic/not-created')
+        rt.model_instance = 'synthetic_35'
+        rt.ports = {'px4_output': 18001, 'battery_input': 18002}
+        required = ('BATTERY_STATUS', 'ESC_STATUS', 'HEARTBEAT', 'LOCAL_POSITION_NED', 'EXTENDED_SYS_STATE')
+        rt.recorder = Mock(port=18003)
+        rt.recorder.snapshot.side_effect = [
+            {'saved_by_type': {name: 0 for name in required}},
+            {'saved_by_type': {name: 1 for name in required}}]
+        rt.recorder.latest.side_effect = lambda name, **kw: (
+            {'base_mode': 0} if name == 'HEARTBEAT' else {'synthetic': True} if name in required else {})
+        rt.command = Mock(return_value='Disarmed')
+        rt.wait_for = lambda predicate, seconds, description: self.assertTrue(predicate(), description)
+        with patch.object(m, 'PtyConsole') as px4, patch.object(m, 'PipeProcess') as sender:
+            rt._start_px4()
+        px4.assert_called_once()
+        sender.assert_called_once()
+        expected = {'HEARTBEAT': 2, 'ESC_STATUS': 20, 'BATTERY_STATUS': 5,
+                    'LOCAL_POSITION_NED': 10, 'EXTENDED_SYS_STATE': 5, 'ATTITUDE': 10,
+                    'POSITION_TARGET_LOCAL_NED': 10, 'ATTITUDE_TARGET': 10, 'ACTUATOR_OUTPUT_STATUS': 20}
+        commands = [call.args[0] for call in rt.command.call_args_list]
+        self.assertEqual([text for text in commands if text.startswith('mavlink stream ')],
+                         [f'mavlink stream -u 18001 -s {name} -r {hz}' for name, hz in expected.items()])
+        self.assertTrue(set(expected) <= collector.SELECTED)
+        self.assertFalse(any(text.startswith(('commander arm', 'commander takeoff')) for text in commands))
+
     def test_nonfinite_cache_values_remain_strict_json(self):
         """합성 cache 경계: 원문 수치는 유지하고 상태 파일/API만 기존 JSON 태그로 표현한다."""
         import json
@@ -217,8 +249,16 @@ class ServiceTelemetryTest(unittest.TestCase):
                 'BATTERY_STATUS': (now, {'voltages': [3700, 65535], 'current_battery': -1}),
                 'HEARTBEAT': (now, {'base_mode': 0}),
                 'ATTITUDE': (now - 10_000_000_000, {'roll': float('nan')}),
+                'POSITION_TARGET_LOCAL_NED': (now, {'time_boot_ms': 123, 'coordinate_frame': 1,
+                                                   'type_mask': 1, 'x': float('nan'), 'vz': -.5}),
+                'ATTITUDE_TARGET': (now, {'time_boot_ms': 123, 'type_mask': 0,
+                                         'q': [1., 0., 0., 0.], 'thrust': .5}),
+                'ACTUATOR_OUTPUT_STATUS': (now, {'time_usec': 123000, 'active': 4,
+                                                'actuator': [100., 200., 300., 400.] + [0.]*28}),
             }
             result = rt.telemetry()
+            controls = ('POSITION_TARGET_LOCAL_NED', 'ATTITUDE_TARGET', 'ACTUATOR_OUTPUT_STATUS')
+            self.assertTrue(set(controls) <= set(result['messages']), 'control context missing from service telemetry')
             try:
                 json.dumps(result, allow_nan=False)
             except ValueError as error:
@@ -228,6 +268,8 @@ class ServiceTelemetryTest(unittest.TestCase):
             self.assertEqual(result['messages']['BATTERY_STATUS'], recorder.latest('BATTERY_STATUS'))
             self.assertEqual(result['messages']['ATTITUDE'], {})
             self.assertEqual(result['messages']['HEARTBEAT'], {'base_mode': 0})
+            for name in controls:
+                self.assertEqual(result['messages'][name], collector.safe_json(recorder.latest(name)))
             m.atomic_json(Path(d) / 'status.json', rt.status())
             saved = json.loads((Path(d) / 'status.json').read_text())
             self.assertEqual(saved['telemetry']['messages']['ESC_STATUS']['voltage'], expected)
@@ -238,12 +280,18 @@ class ServiceTelemetryTest(unittest.TestCase):
                     response = api.request(path, {'action': action}, timeout=2)
                     messages = response['messages'] if action == 'telemetry' else response['telemetry']['messages']
                     self.assertEqual(messages['ESC_STATUS']['voltage'], expected)
+                    for name in controls:
+                        self.assertEqual(messages[name], result['messages'][name])
                     self.assertTrue(response['ok'])
             finally:
                 server.close()
                 recorder.close()
             result['messages']['ESC_STATUS']['voltage'][0]['$float'] = 'changed copy'
             self.assertTrue(math.isnan(recorder.latest('ESC_STATUS')['voltage'][0]))
+            from unittest.mock import patch
+            with patch.object(collector.time, 'monotonic_ns', return_value=now + 10_000_000_000):
+                for name in controls:
+                    self.assertEqual(rt.telemetry()['messages'][name], {})
             self.assertFalse(path.exists())
             self.assertFalse((Path(d) / 'not-started').exists())
 
