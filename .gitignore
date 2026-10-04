@@ -12,6 +12,8 @@
 Thumbs.db
 
 # Large/private experiment artifacts: keep outside Git
+/PX4-Autopilot/
+/experiments/
 data/
 datasets/
 logs/
@@ -52,3 +54,8 @@ install/
 CMakeCache.txt
 CMakeFiles/
 compile_commands.json
+
+# Per-user continuous simulator configuration/state
+/config/service.local.json
+/.arion-service/
+/generated/

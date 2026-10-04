@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<sdf version="1.9">
+  <world name="arion_motor_test">
+    <physics name="physics" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <model name="arion_fixture">
+      <static>true</static>
+      <link name="base_link"/>
+      <plugin filename="ArionFixedMotorPlugin" name="arion::FixedMotorState"/>
+    </model>
+  </world>
+</sdf>
