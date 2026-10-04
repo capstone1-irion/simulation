@@ -1,0 +1,61 @@
+diff --git a/src/modules/simulation/gz_bridge/GZMixingInterfaceESC.cpp b/src/modules/simulation/gz_bridge/GZMixingInterfaceESC.cpp
+index f556817ea9..ef20ddb588 100644
+--- a/src/modules/simulation/gz_bridge/GZMixingInterfaceESC.cpp
++++ b/src/modules/simulation/gz_bridge/GZMixingInterfaceESC.cpp
+@@ -32,6 +32,7 @@
+  ****************************************************************************/
+ 
+ #include "GZMixingInterfaceESC.hpp"
++#include <parameters/param.h>
+ 
+ bool GZMixingInterfaceESC::init(const std::string &model_name)
+ {
+@@ -102,6 +103,14 @@ void GZMixingInterfaceESC::Run()
+ 
+ void GZMixingInterfaceESC::motorSpeedCallback(const gz::msgs::Actuators &actuators)
+ {
++	// Status-only ownership switch. The actuator publication path is unchanged.
++	int32_t publish_status = 1;
++	const param_t status_parameter = param_find("SIM_GZ_ESC_ST");
++	if (status_parameter != PARAM_INVALID && param_get(status_parameter, &publish_status) == 0
++	    && publish_status == 0) {
++		return;
++	}
++
+ 	if (hrt_absolute_time() == 0) {
+ 		return;
+ 	}
+@@ -123,6 +132,11 @@ void GZMixingInterfaceESC::motorSpeedCallback(const gz::msgs::Actuators &actuato
+ 
+ 	if (esc_status.esc_count > 0) {
+ 		esc_status.timestamp = hrt_absolute_time();
++		// A departing instance-0 publisher clears the shared advertised flag.
++		// Restore status visibility when the operator re-enables this source.
++		if (orb_exists(ORB_ID(esc_status), 0) != PX4_OK) {
++			orb_advertise(ORB_ID(esc_status), nullptr);
++		}
+ 		_esc_status_pub.publish(esc_status);
+ 	}
+ 
+diff --git a/src/modules/simulation/gz_bridge/module.yaml b/src/modules/simulation/gz_bridge/module.yaml
+index e41aedb1e3..e0afbcfe73 100644
+--- a/src/modules/simulation/gz_bridge/module.yaml
++++ b/src/modules/simulation/gz_bridge/module.yaml
+@@ -39,6 +39,17 @@ actuator_output:
+       num_channels: 4
+ 
+ parameters:
++    - group: Simulation
++      definitions:
++        SIM_GZ_ESC_ST:
++            description:
++                short: Publish command-derived Gazebo ESC status
++                long: |
++                  Disable only the stock ESC status publisher when a separate
++                  simulation telemetry bridge owns esc_status. Motor commands
++                  and flight control are unaffected. No automatic fallback.
++            type: boolean
++            default: 1
+     - group: Geometry
+       definitions:
+         SIM_GZ_SV_MAXA${i}:
