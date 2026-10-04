@@ -2,6 +2,16 @@
 
 PX4 SITL과 Gazebo 기반 배터리·모터/ESC 상태 생성 및 MAVLink 데이터 수집 파트입니다.
 
+## 현재 사용: CMU 상시 운영 서비스
+
+**시작·관찰·비행·이상 주입·종료는 [CMU 서비스 사용 가이드](docs/cmu-service-guide.md)를 따릅니다.** 이미 준비된 PC는 기존 `config/service.local.json`을 사용하며, 다른 PC의 준비 순서는 가이드에 별도로 있습니다. 개인 계정 경로나 에이전트 실행 환경을 요구하지 않습니다.
+
+- 활성 배터리 자료는 `profiles/battery/cmu_runtime/catalog.json`입니다. 같은 CMU VAH01 셀의 실제 RPT에서 선택한 상대 용량 **100.000000 / 95.027445 / 90.422638 / 84.812594%**의 네 프로파일을 사용합니다. 4S2P는 가상 팩 가정이며 등가 OCV·유효 저항 추정의 한계는 [프로파일 근거](docs/cmu-runtime-profiles.md)에 있습니다.
+- 모터 joint 기반 RPM·bench 전류와 배터리를 단방향으로 연동합니다. 모터별 전류/보고 RPM 이상 주입은 **전기 부하·텔레메트리 이상**이지 추진력 고장이 아닙니다. AI 입력용 PX4 MAVLink 원문과 주입 정답은 별도 기록합니다.
+- 시작은 Disarmed이며 이륙은 별도 명령입니다. 시간 제한 없는 운영 루프와 파일별 로그 회전을 제공하지만, 24/7 내구성·전체 디스크 보관 상한·장애 자동 복구·부팅 자동 실행을 보장하지 않습니다. pause 중에는 최근 수신도 새 센서 생성의 증거가 아닙니다.
+- 지상 네 프로파일 선택·원문 전압 대조, 7초 pause/resume, **지상 `world-reset` 복구와 새 PX4 epoch에서 두 차례 비행**을 확인했습니다. 정상 100%와 열화 84.812594%에서 목표 3m 이륙·호버, 모터 1·4 이상 주입/해제, 착륙·자동 Disarm을 관측했습니다. world-reset은 초기 world에 기체를 포함하고 PX4/sender만 재시작해 같은 서비스·Gazebo·수집기·run을 유지합니다. 짧은 수신 공백과 `px4_epoch` 경계를 기록하며 정확히 3m 정지나 무중단 메시지 수신을 뜻하지 않습니다. 최종 CLI 종료와 소유 프로세스·IPC 정리도 확인했으며 현재 서비스는 종료 상태입니다. 대규모·24/7 내구성·GUI 화면 확인은 수행하지 않았습니다.
+- `cmu_evtol_normal_soh100`의 초기 정상 6개 프로파일은 [오프라인 참고·재생 도구](docs/cmu-evtol-normal-profile-guide.md)로 보존합니다. 네 런타임 프로파일과 용도가 다릅니다. NASA 구성은 [활성 경로에서 제외](docs/nasa-retirement.md)되었으며 출처는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)에 안내합니다.
+
 ## 범위
 
 - Gazebo `custom_x500`, Custom Motor Plugin, Custom Battery Plugin
@@ -13,12 +23,15 @@ PX4 SITL과 Gazebo 기반 배터리·모터/ESC 상태 생성 및 MAVLink 데이
 
 | 경로 | 역할 |
 | --- | --- |
-| `plugins/motor/` | 모터 상태 생성 플러그인 |
-| `plugins/battery/` | 모터 부하 기반 배터리 플러그인 |
-| `models/custom_x500/` | 기체 모델 및 설정 |
+| `plugins/motor/` | 초기 고정값 모터 상태 시험 플러그인 |
+| `plugins/battery/` | 고정값 배터리 전달 시험 플러그인 |
+| `plugins/power/` | 활성 CMU 모터·배터리 부하 연동 플러그인 |
+| `models/custom_x500/` | 초기 고정값 시험 기체 모델 및 설정 |
 | `px4/src/modules/arion_motor_bridge/` | PX4 out-of-tree 브리지 모듈 |
-| `patches/px4-v1.17.0/` | 기본 ESC 상태 발행 전환만 추가하는 재현 가능한 최소 패치 |
-| `tools/telemetry/` | MAVLink 수신·저장 도구 |
+| `patches/px4-v1.17.0/` | 원본 ESC 상태 발행 전환 패치와 복사 SITL overlay용 외부 배터리 변환 패치 |
+| `tools/arion_sim.py`, `tools/sim_service/` | 상시 운영 CLI와 소유 프로세스·제어 관리 |
+| `tools/mavlink_collector/` | 수신 전용 MAVLink 원문·품질 주석·회전 기록 |
+| `profiles/battery/cmu_runtime/` | 활성 CMU 네 프로파일·SOC 등가곡선·출처 |
 | `scenarios/` | 비행·이상 주입 실험 정의 |
 | `tests/` | 파트 검증 |
 | `docs/` | 파트별 빌드·실행 문서 |
@@ -31,11 +44,11 @@ PX4 SITL과 Gazebo 기반 배터리·모터/ESC 상태 생성 및 MAVLink 데이
 | 배터리 | 모터 부하 → Battery Plugin → 외부 `BATTERY_STATUS` 송신 → PX4 외부 배터리 소스 → uORB `battery_status` → PX4 MAVLink |
 | AI 입력 | PX4가 외부로 송신한 MAVLink 텔레메트리 |
 
-기존 비행제어 경로는 유지합니다. 고정값 전달을 먼저 검증한 뒤 동적 모델을 추가합니다. 목표 구동 명령과 모사 상태를 구분하고, 숨겨진 이상 주입 설정은 AI 입력이 아닌 정답 기록으로 관리합니다. 메시지 지원, 단위, 주기와 설정은 선택한 버전에서 확인합니다.
+기존 비행제어 경로는 유지합니다. 고정값 전달을 먼저 검증한 뒤 부하 연동 모델과 CMU 서비스를 추가했습니다. 목표 구동 명령과 모사 상태를 구분하고, 숨겨진 이상 주입 설정은 AI 입력이 아닌 정답 기록으로 관리합니다. 메시지 지원, 단위, 주기와 설정은 선택한 버전에서 확인합니다.
 
-## 현재 구현·검증 범위
+## 초기 고정값 연동 이력
 
-모터 4개의 **고정 시험값 RPM·전압·전류**를 Gazebo → 별도 PX4 Bridge → uORB → 실제 MAVLink/Python 수신으로 전달하는 최소 경로를 구현했습니다. PX4 v1.17.0과 Gazebo Harmonic에서 headless·Disarmed 상태로 값·번호·발행원 전환·기본 경로 복귀·입력 부재를 확인합니다. 이는 정상/물리 모델, 배터리 연동, 비행 또는 AI 성능 검증 완료를 의미하지 않습니다.
+초기 단계에서는 모터 4개의 **고정 시험값 RPM·전압·전류**를 Gazebo → 별도 PX4 Bridge → uORB → 실제 MAVLink/Python 수신으로 전달하는 최소 경로를 구현했습니다. PX4 v1.17.0과 Gazebo Harmonic에서 headless·Disarmed 상태로 값·번호·발행원 전환·기본 경로 복귀·입력 부재를 확인하는 도구입니다. 이 고정값 시험 자체는 정상/물리 모델, 배터리 연동, 비행 또는 AI 성능 검증 완료를 의미하지 않습니다. 현재 CMU 서비스와 별도인 초기 검증 경로로 보존합니다.
 
 - 실행 방법: [모터 고정값 연동 가이드](docs/motor-fixed-run-guide.md)
 - 필드·단위·번호·시간·제한: [고정값 전달 계약](docs/motor-fixed-contract.md)
@@ -48,43 +61,3 @@ PX4 원본에는 모터 구동·비행제어 변경 없이 ESC 상태 발행 전
 - [`ai`](https://github.com/capstone1-irion/ai): 공통 전처리, 모델 개발과 평가
 - [`ui`](https://github.com/capstone1-irion/ui): 상태와 이상 결과 표시
 - [`docs`](https://github.com/capstone1-irion/docs): 공통 인터페이스와 통합 시연 문서
-
-## 기능 추가: 수신 전용 상시 MAVLink 기록기 추가
-
-운영 서비스와 향후 AI가 같은 PX4 원문 수집기를 재사용하도록 한다.
-
-- MavlinkRecorder의 독점 UDP bind, 최신값 사본, 타입별 수신 나이와 bounded 오류 상태를 제공한다.
-- 선택 메시지 전량 JSONL 저장, 파일별 회전, metadata/종료 summary와 정상 신호 종료를 구현한다.
-- standard/arion_cmu_v1/legacy 품질 설명을 분리하고 숨겨진 주입 설정을 원문 fields에 넣지 않는다.
-
-## 기능 추가: 외부 배터리 입력과 격리 SITL overlay 추가
-
-배터리 모델 출력을 기존 PX4 외부 배터리 수신 경로로 전달한다.
-
-- 배터리9필드 계약·sim-time 발행 시계·고정 Battery Plugin을 추가한다.
-- sender가 BATTERY_STATUS만 PX4에 송신하며 duration0/stale wait·sim-time 되감김·신호 종료를 지원한다.
-- 배터리 수신/재송신 변환과 POSIX IPC 위치를 별도 overlay에 적용하는 빌더를 제공한다.
-
-## 기능 추가: CMU 정상·열화 4단계 배터리 자료 추가
-
-임의 SOH 축소 대신 실제 CMU v3 같은 셀의 열화 구간으로 선택형 모델 파라미터를 만든다.
-
-- 초기 VAH01/17/27 정상6프로파일과 원본 추적·재생 도구를 보존해 공개한다.
-- 전체 VAH01 RPT에서 상대100/95.027445/90.422638/84.812594% 네 구간을 선택한다.
-- 용량·effective DC1초 저항·각101점 OCV등가곡선과 catalog/provenance·재생성 도구를 추가한다.
-
-## 기능 추가: joint 부하·CMU 배터리·모터 이상 제어 연동
-
-비행 중 실제 Gazebo joint 부하를 선택 배터리와 모터별 이상 시나리오에 연결한다.
-
-- joint RPM과16V bench 전류 lookup, 네 모터 합+보조0.5A, 소비량/SOC/전압 강하를 계산한다.
-- CMU 프로파일 선택, 모터별 current/RPM보고 scale, clear/reset/restore를 제공한다.
-- 공유 mailbox에 명령을 넣고 PostUpdate에서 적용하며 accepted/applied revision·취소·generation을 구분한다.
-
-## 기능 추가: 부하 연동 비행 관찰·수집 도구 추가
-
-정상 부하 모델의 실제 비행 경로를 관찰하고 운영 서비스와 별도의 재현 도구를 보존한다.
-
-- standalone 서버에 비행용 IMU/기압/GPS/자기장 시스템을 명시하는 설정을 추가한다.
-- power observer, 일회성 coupled flight 도구, 원문 분석 및 안전한 소유 프로세스 정리 경로를 제공한다.
-- 부팅 뒤 RC/GCS 정책 readback·정상 preflight·이륙/착륙·관측/정답 분리 계약을 문서화한다.
