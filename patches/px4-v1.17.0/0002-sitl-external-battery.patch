@@ -1,0 +1,101 @@
+From: Arion simulation project
+Subject: [SITL overlay only] Preserve standard external battery conversion
+
+Applied only to isolated copies by tools/build_sitl_overlay.py, never to the
+real-flight checkout. Baseline d6f12ad1c4f70ad3230afd7d86e971421e02fef4.
+The single MAVLink receiver publication intentionally accepts battery ID 0 only.
+
+--- a/src/modules/mavlink/mavlink_receiver.cpp
++++ b/src/modules/mavlink/mavlink_receiver.cpp
+@@ -1801,7 +1801,19 @@
+ 	mavlink_battery_status_t battery_mavlink;
+ 	mavlink_msg_battery_status_decode(msg, &battery_mavlink);
+ 
++	// This receiver has one single-instance publisher. Do not alias other IDs
++	// onto BAT1 (or overflow the 1-based uORB ID).
++	if (battery_mavlink.id != 0) {
++		return;
++	}
++
+ 	battery_status_s battery_status{};
++	battery_status.id = battery_mavlink.id + 1;
++	battery_status.source = battery_status_s::SOURCE_EXTERNAL;
++	battery_status.current_average_a = -1.f;
++	battery_status.scale = -1.f;
++	battery_status.time_remaining_s = battery_mavlink.time_remaining > 0 ?
++					 (float)battery_mavlink.time_remaining : NAN;
+ 	battery_status.timestamp = hrt_absolute_time();
+ 
+ 	float voltage_sum = 0.0f;
+@@ -1813,23 +1825,36 @@
+ 		cell_count++;
+ 	}
+ 
++	// A single slot can mean pack voltage or one cell: keep cell count unknown.
++	// UINT16_MAX-1 chunks also encode a total, never physical cells.
++	if (cell_count == 1 || (cell_count > 0 && battery_mavlink.voltages[0] == UINT16_MAX - 1)) {
++		for (auto &cell_voltage : battery_status.voltage_cell_v) {
++			cell_voltage = 0.f;
++		}
++
++		cell_count = 0;
++	}
++
+ 	battery_status.voltage_v = voltage_sum;
+-	battery_status.current_a = (float)(battery_mavlink.current_battery) / 100.0f;
+-	battery_status.remaining = (float)battery_mavlink.battery_remaining / 100.0f;
++	battery_status.current_a = battery_mavlink.current_battery == -1 ? -1.f :
++				   (float)battery_mavlink.current_battery / 100.0f;
++	battery_status.remaining = (battery_mavlink.battery_remaining >= 0 && battery_mavlink.battery_remaining <= 100) ?
++				   (float)battery_mavlink.battery_remaining / 100.0f : -1.f;
+ 	battery_status.discharged_mah = (float)battery_mavlink.current_consumed;
+ 	battery_status.cell_count = cell_count;
+-	battery_status.temperature = (float)battery_mavlink.temperature;
+-	battery_status.connected = true;
++	battery_status.temperature = battery_mavlink.temperature == INT16_MAX ? NAN :
++				     (float)battery_mavlink.temperature / 100.0f;
++	battery_status.connected = voltage_sum > 0.f;
+ 
+ 	// Set the battery warning based on remaining charge.
+ 	//  Note: Smallest values must come first in evaluation.
+-	if (battery_status.remaining < _param_bat_emergen_thr.get()) {
++	if (battery_status.remaining >= 0.f && battery_status.remaining < _param_bat_emergen_thr.get()) {
+ 		battery_status.warning = battery_status_s::WARNING_EMERGENCY;
+ 
+-	} else if (battery_status.remaining < _param_bat_crit_thr.get()) {
++	} else if (battery_status.remaining >= 0.f && battery_status.remaining < _param_bat_crit_thr.get()) {
+ 		battery_status.warning = battery_status_s::WARNING_CRITICAL;
+ 
+-	} else if (battery_status.remaining < _param_bat_low_thr.get()) {
++	} else if (battery_status.remaining >= 0.f && battery_status.remaining < _param_bat_low_thr.get()) {
+ 		battery_status.warning = battery_status_s::WARNING_LOW;
+ 	}
+ 
+--- a/src/modules/mavlink/streams/BATTERY_STATUS.hpp
++++ b/src/modules/mavlink/streams/BATTERY_STATUS.hpp
+@@ -74,8 +74,14 @@
+ 				bat_msg.type = MAV_BATTERY_TYPE_LIPO;
+ 				bat_msg.current_consumed = (battery_status.connected) ? battery_status.discharged_mah : -1;
+ 				bat_msg.energy_consumed = -1;
+-				bat_msg.current_battery = (battery_status.connected) ? battery_status.current_a * 100 : -1;
+-				bat_msg.battery_remaining = (battery_status.connected) ? roundf(battery_status.remaining * 100.f) : -1;
++				// uORB uses -1 A for unknown, not -0.01 A. Preserve charging
++				// currents other than that reserved sentinel, and never cast NaN.
++				bat_msg.current_battery = (battery_status.connected && PX4_ISFINITE(battery_status.current_a)
++							   && (battery_status.current_a < -1.f || battery_status.current_a > -1.f)) ?
++							  roundf(battery_status.current_a * 100.f) : -1;
++				bat_msg.battery_remaining = (battery_status.connected && PX4_ISFINITE(battery_status.remaining)
++							    && battery_status.remaining >= 0.f && battery_status.remaining <= 1.f) ?
++							   roundf(battery_status.remaining * 100.f) : -1;
+ 				// MAVLink extension: 0 is unsupported, in uORB it's NAN
+ 				bat_msg.time_remaining = (battery_status.connected && (PX4_ISFINITE(battery_status.time_remaining_s))) ?
+ 							 math::max((int)battery_status.time_remaining_s, 1) : 0;
+@@ -119,7 +125,7 @@
+ 
+ 				// check if temperature valid
+ 				if (battery_status.connected && PX4_ISFINITE(battery_status.temperature)) {
+-					bat_msg.temperature = battery_status.temperature * 100.f;
++					bat_msg.temperature = roundf(battery_status.temperature * 100.f);
+ 
+ 				} else {
+ 					bat_msg.temperature = INT16_MAX;
