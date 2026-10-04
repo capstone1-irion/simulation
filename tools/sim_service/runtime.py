@@ -15,6 +15,8 @@ import threading
 import time
 import uuid
 
+from mavlink_collector.collector import safe_json
+
 from .control_api import ControlServer
 from .model_config import MODEL_NAME, validate_catalog, write_model, write_world
 from .processes import PipeProcess, PtyConsole, RotatingLog
@@ -73,13 +75,26 @@ def check_runtime_files(config):
             raise FileNotFoundError('Build target is missing: ' + name)
     if not os.access(config['px4_binary'], os.X_OK):
         raise ValueError('PX4 binary is not executable')
-    binary = Path(config['px4_binary']).read_bytes()
-    if not binary.startswith(b'\x7fELF') or b'/tmp/px4_lock' in binary or b'/tmp/px4-sock-' in binary:
-        raise ValueError('A project-local SITL overlay ELF is required')
     ipc = Path(config['ipc_dir'])
-    for prefix in ('px4_lock', 'px4-sock-'):
-        if os.fsencode(ipc / prefix) not in binary:
-            raise ValueError('ELF IPC prefix does not match ipc_dir')
+    needles = [b'/tmp/px4_lock', b'/tmp/px4-sock-',
+               *(os.fsencode(ipc / prefix) for prefix in ('px4_lock', 'px4-sock-'))]
+    found = [False] * len(needles)
+    overlap = max(map(len, needles)) - 1
+    digest = hashlib.sha256()
+    with Path(config['px4_binary']).open('rb') as binary:
+        magic = binary.read(4)
+        digest.update(magic)
+        tail = magic
+        while chunk := binary.read(1024 * 1024):
+            digest.update(chunk)
+            window = tail + chunk
+            found = [seen or needle in window for seen, needle in zip(found, needles)]
+            # 접두사가 읽기 경계를 가로질러도 전체 파일 검사와 같은 결과를 보존한다.
+            tail = window[-overlap:]
+    if magic != b'\x7fELF' or any(found[:2]):
+        raise ValueError('A project-local SITL overlay ELF is required')
+    if not all(found[2:]):
+        raise ValueError('ELF IPC prefix does not match ipc_dir')
     if len(os.fsencode(ipc / ('px4-sock-' + str(config['instance'])))) >= 108:
         raise ValueError('PX4 IPC socket path is too long')
     for p in (ipc / f'px4_lock-{config["instance"]}', ipc / f'px4-sock-{config["instance"]}'):
@@ -93,7 +108,7 @@ def check_runtime_files(config):
             raise FileNotFoundError(str(p))
     if shutil.which('gz') is None:
         raise RuntimeError('Installed Gazebo Harmonic CLI is required; no automatic installation')
-    return hashlib.sha256(binary).hexdigest()
+    return digest.hexdigest()
 
 
 def reserve_ports(count):
@@ -196,7 +211,7 @@ class Runtime:
                 return value
             result = call(command)
             accepted = result.get('accepted_revision')
-            if accepted is not None and wait:
+            if accepted is not None and wait and result.get('applied_revision', -1) < accepted:
                 deadline = time.monotonic() + 8
                 while time.monotonic() < deadline:
                     result = call('status')
@@ -221,10 +236,10 @@ class Runtime:
         self.event('world_control', request=request, response=result.stdout)
 
     def telemetry(self):
-        """배포 가능한 원문 메시지와 수신 freshness만 반환한다; SOH/주입값/정답은 넣지 않는다."""
+        """원문/freshness를 JSON-safe 사본으로 반환한다; 비유한 값은 태그로 보존하고 정답은 넣지 않는다."""
         names = ['HEARTBEAT', 'ESC_STATUS', 'BATTERY_STATUS', 'LOCAL_POSITION_NED', 'EXTENDED_SYS_STATE', 'ATTITUDE']
         return {'utc_ns': time.time_ns(), 'receive_only': True,
-                'messages': {name: self.recorder.latest(name, max_age_s=3) if self.recorder else {} for name in names}}
+                'messages': {name: safe_json(self.recorder.latest(name, max_age_s=3)) if self.recorder else {} for name in names}}
 
     def status(self):
         """운영 상태·PID·데이터 경로·수신 건강을 반환한다. 이 운영 화면 전체를 AI 입력으로 쓰지 않는다."""
@@ -570,6 +585,10 @@ class Runtime:
             if self.recorder is not None:
                 try:
                     self.recorder.close()
+                    health = self.recorder.snapshot()
+                    if health['errors'] or health['worker_alive']:
+                        self.errors.append('Recorder unclean shutdown: ' + repr({
+                            'errors': health['errors'], 'worker_alive': health['worker_alive']}))
                 except Exception as error:
                     self.errors.append('Recorder close: ' + repr(error))
             if self.event_log is not None:

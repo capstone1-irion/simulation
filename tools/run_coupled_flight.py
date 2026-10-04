@@ -14,7 +14,6 @@ import math
 import os
 from pathlib import Path
 import pty
-import signal
 import socket
 import subprocess
 import sys
