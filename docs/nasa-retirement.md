@@ -9,8 +9,8 @@
 - `docs/battery-normal-profile-guide.md`
 - `tests/test_battery_profiles.py` (NASA 전용 검증)
 
-새 운영기는 CMU 카탈로그만 선택한다. 기존 `cmu_evtol_normal_soh100`은 초기 정상 구간의 원본 추적용 참고 자료이며, 부하 연동 운영 프로파일은 `cmu_runtime/catalog.json`이다. 두 자료의 용도는 같지 않다.
+새 운영기는 [CMU 런타임 카탈로그](../profiles/battery/cmu_runtime/catalog.json)만 선택한다. 초기 정상 6개 프로파일 번들은 별도 과거 자료였으며 이번 미사용 파일 정리로 삭제했다. 활성 런타임 카탈로그·CSV·provenance는 유지한다.
 
-삭제로 출처를 잃지 않도록, 이 작업 환경에서는 위 파일의 원래 bytes를 프로젝트 작업 기록 아래 `hermes/cmu-service/retired-nasa/`로 옮겼다. `retirement-manifest.json`에 이전 경로·보관 경로·SHA-256을 기록했고 옮긴 뒤 해시 일치를 확인했다. NASA 원본 다운로드와 과거 보고서는 과거 근거로 보존했으며 새 학습·실행 입력으로 선택하지 않는다.
+과거에는 제외 파일을 프로젝트 `hermes/cmu-service/retired-nasa/`에 옮기고 해시를 대조했다. 이는 당시 보관 이력이며 현재 보존 약속이 아니다. 승인된 정리 후 이 보관 사본·manifest, 내려받은 NASA/CMU 원본, 과거 비행 로그·검증 산출물은 로컬에 보관하지 않는다. 남아 있는 보고서는 당시 설명이며 원문 증거 파일이 현재 제공된다는 뜻이 아니다.
 
-보관 디렉터리는 운영기에 필요한 의존성이 아니므로 팀원은 이 디렉터리 없이 CMU 서비스를 사용할 수 있다. 과거 보고서의 NASA 설명은 당시 수행 이력이지 현재 활성 구성 안내가 아니다.
+이 자료들은 CMU 서비스 실행 의존성이 아니다. CMU 프로파일 생성기와 실원본 발행 시험은 유지하지만, 실행하려면 [고정 원본을 다시 확보](cmu-runtime-profiles.md#재생성)해야 한다. NASA를 현재 서비스 선택지나 학습 입력으로 되살리지 않는다.

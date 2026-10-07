@@ -96,7 +96,7 @@ CLI는 `UTC시각-label-UUID/`를 만들고, API는 지정한 새 폴더를 만�
 
 `HEARTBEAT`, `EXTENDED_SYS_STATE`, `ATTITUDE`, `LOCAL_POSITION_NED`, `SERVO_OUTPUT_RAW`, `BATTERY_STATUS`, `ESC_INFO`, `ESC_STATUS`, `POSITION_TARGET_LOCAL_NED`, `ATTITUDE_TARGET`, `ACTUATOR_OUTPUT_STATUS`.
 
-추가 3종은 PX4가 보고하는 제어 목표/구동 출력이며 `SET_*` 명령을 보내는 기능이 아닙니다. CMU 서비스는 기존 6종과 추가 3종의 총 9종을 설정·조회합니다. 이 수집기의 지원 11종 전체를 설정하는 것은 아니며, 모드에 따라 제어 토픽이 없을 수 있습니다. 합성 패킷 시험에 더해 2026-10-04 실제 로컬 SITL 비행에서 새 3종의 수신·저장을 확인했습니다. 실기체·모든 모드·AI 시간 정렬 확인으로 확대하지 않습니다. 실제 건수와 원문 단위·mask·출력 채널 및 정상 전용 학습 원칙은 [AI 계약](../../docs/ai-telemetry-contract.md)을 따릅니다.
+추가 3종은 PX4가 보고하는 제어 목표/구동 출력이며 `SET_*` 명령을 보내는 기능이 아닙니다. CMU 서비스는 기존 6종과 추가 3종의 총 9종을 설정·조회합니다. 이 수집기의 지원 11종 전체를 설정하는 것은 아니며, 모드에 따라 제어 토픽이 없을 수 있습니다. 합성 패킷 시험에 더해 2026-10-04 실제 로컬 SITL 비행에서 새 3종의 수신·저장을 확인한 **과거 이력**이 있습니다. 해당 비행 원문·검증 산출물은 승인된 정리 후 로컬에 보관하지 않으며 이번 문서 갱신은 새 시험이 아닙니다. 실기체·모든 모드·AI 시간 정렬 확인으로 확대하지 않습니다. 당시 건수와 원문 단위·mask·출력 채널 및 정상 전용 학습 원칙은 [AI 계약](../../docs/ai-telemetry-contract.md)을 따릅니다.
 
 `UNKNOWN_*`, `BAD_DATA`도 저장합니다. 나머지 알려진 타입은 `seen_by_type`에 집계하지만 raw에는 저장하지 않습니다.
 
@@ -175,4 +175,4 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover \
 
 새 시험은 프로젝트 `hermes/cmu-service/io/`의 고유 **synthetic** 폴더에 근거를 보존하며 OS 임시 loopback 포트만 사용합니다. sender 시험은 기존 `pkg-config gz-transport13` 및 생성 MAVLink C 헤더로 실제 translation unit을 빌드합니다. Gazebo/PX4 서버나 실기체는 실행/접속하지 않습니다. 5초를 넘는 pause의 forwarding seam, sim0 복구, stale 재송신 차단, 신호 종료, 독점 bind, 최신값 필터·나이, 선택 전 메시지 저장, UNKNOWN/BAD_DATA, 비유한값, 회전 충돌/오류 노출을 확인합니다. 실제 producer→PX4→출력 통합·비행·무기한 내구성 인증과는 별개입니다.
 
-로컬에 보존된 이전 `test_collector.py`는 기본 legacy 주석과 duration0 거부를 기대하는 역사적 시험입니다. 현행 계약과 달라 이번 저장소 공개 대상 및 활성 시험 목록에서는 제외했습니다. 위 `test_continuous_collector.py`와 sender 집중시험이 현재 계약을 확인하며, 과거 시험의 전체 통과를 주장하지 않습니다.
+이전 `test_collector.py`는 현행 계약과 다른 역사적 시험으로 이번 정리에서 삭제했습니다. 현재 계약은 위 `test_continuous_collector.py`와 sender 집중시험이 담당합니다. 과거 synthetic 출력도 정리 후 미보관이며, 새 실행은 새 고유 결과 폴더를 만듭니다. 문서 갱신으로 시험을 새로 실행하거나 과거 시험 전체의 통과를 주장하지 않습니다.

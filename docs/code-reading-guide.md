@@ -41,11 +41,11 @@ C++는 이 프로젝트에 등장하는 `struct`, 참조/`const`, `std::array`, 
 |---|---|---|
 | 현재 운영 | [`tools/arion_sim.py`](../tools/arion_sim.py), `tools/sim_service/`, [`plugins/power/CoupledPowerState.cpp`](../plugins/power/CoupledPowerState.cpp) | `custom_x500_cmu` 모델을 run별로 생성한다. 고정 시험 모델을 그대로 실행하는 구조가 아니다. |
 | 현재 배터리 | [`profiles/battery/cmu_runtime/catalog.json`](../profiles/battery/cmu_runtime/catalog.json) | 같은 VAH01 셀의 RPT 000/002/006/013 네 단계. CSV는 SOC 조회표이며 원본 시간 재생이 아니다. |
-| 고정 전달 fixture | [`plugins/motor/FixedMotorState.cpp`](../plugins/motor/FixedMotorState.cpp), [`plugins/battery/FixedBatteryState.cpp`](../plugins/battery/FixedBatteryState.cpp) | `arion::FixedMotorState`, `arion::FixedBatteryState`는 식별 가능한 상수로 통로를 확인한다. 정상 물리 모델이 아니다. |
-| 초기 모델 | [`models/custom_x500/model.sdf`](../models/custom_x500/model.sdf), [`models/custom_x500_battery_fixture/model.sdf`](../models/custom_x500_battery_fixture/model.sdf) | 전자는 고정 모터, 후자는 거기에 고정 배터리를 더한다. 현재 CMU 모델과 구분한다. |
-| 초기 부하 연동 | [`models/custom_x500_power/model.sdf`](../models/custom_x500_power/model.sdf) | 같은 coupled Plugin이지만 CMU catalog가 없다. 순수 모델의 `assumed_linear_4s` 기본 경로로 이어진다. |
-| 초기 오프라인 번들 | [`tools/battery_profiles/cmu_evtol.py`](../tools/battery_profiles/cmu_evtol.py), `profiles/battery/cmu_evtol_normal_soh100/` | `ProfileReplay.sample`과 초기 정상 6개 프로파일은 별도 참고·재생 도구다. 현재 서비스의 부하 적분기가 아니다. |
-| 별도 검증 도구 | [`tools/run_coupled_flight.py`](../tools/run_coupled_flight.py), [`tests/run_motor_fixed_e2e.py`](../tests/run_motor_fixed_e2e.py) | 전자의 `Collector`는 harness 전용이다. 현재 공용 `MavlinkRecorder`와 같은 구현이라고 읽지 않는다. |
+| 고정 모터 전달 fixture | [`plugins/motor/FixedMotorState.cpp`](../plugins/motor/FixedMotorState.cpp), [`models/custom_x500/model.sdf`](../models/custom_x500/model.sdf) | 모터 회귀시험의 활성 의존성으로 유지한다. 식별 가능한 상수로 통로를 확인하며 정상 물리 모델이 아니다. |
+| 배터리 단위 계약 | [`include/arion/BatteryFrame.hpp`](../include/arion/BatteryFrame.hpp), [`tests/battery_contract_compile_test.cpp`](../tests/battery_contract_compile_test.cpp) | 고정 배터리 Plugin/모델은 제거했지만 wire 변환의 compile-only 계약은 유지한다. |
+| 오프라인 런타임 산정 | [`tools/battery_profiles/cmu_aging.py`](../tools/battery_profiles/cmu_aging.py) | 생성기·파생 CSV·출처는 유지한다. 재생성에는 제거된 고정 원본의 재취득이 필요하다. |
+| 별도 검증 도구 | [`tests/run_motor_fixed_e2e.py`](../tests/run_motor_fixed_e2e.py) | 고정 모터 전달 시험용이다. 현재 서비스의 공용 `MavlinkRecorder`와 별도 경로다. |
+- 초기 정상 번들/재생기, 고정 배터리 fixture, 초기 부하 연동 모델/비행 harness는 삭제했으며 현재 코드 읽기 경로가 아니다. 과거 실험 문서가 남아 있어도 당시 raw 로그·검증 산출물이 로컬에 남아 있다는 뜻은 아니다.
 - NASA는 [`docs/nasa-retirement.md`](../docs/nasa-retirement.md)에서 제외 범위만 확인한다. 현재 서비스 선택지나 설치 의존성으로 되살리지 않는다.
 - 읽기 완료 질문: “활성 CMU 설정은 어떤 함수가 만드는가? 폴더에 남아 있다는 이유만으로 실행 경로라고 판단하면 왜 안 되는가?”
 
@@ -148,11 +148,12 @@ C++는 이 프로젝트에 등장하는 `struct`, 참조/`const`, `std::array`, 
 - [`docs/cmu-runtime-profiles.md`](../docs/cmu-runtime-profiles.md) → [`profiles/battery/cmu_runtime/catalog.json`](../profiles/battery/cmu_runtime/catalog.json)의 한 profile → [`profiles/battery/cmu_runtime/provenance.json`](../profiles/battery/cmu_runtime/provenance.json) 순서로 본다. 큰 숫자 배열부터 외우지 않는다.
 - 현재 네 ID는 `cmu_vah01_rpt000`, `cmu_vah01_rpt002`, `cmu_vah01_rpt006`, `cmu_vah01_rpt013`; 상대 용량은 100.000000/95.027445/90.422638/84.812594%다.
 - [`tools/battery_profiles/cmu_aging.py`](../tools/battery_profiles/cmu_aging.py): `verify_inputs` → `_segments` → `_measure_rpt` → `extract_rpts` → `select_stages` → `estimate_resistance` → `build_curve` → `generate`.
+- 내려받은 원본은 정리 후 미보관이다. `generate`와 `PublicationTests`를 실제로 실행하려면 [재생성 절](cmu-runtime-profiles.md#재생성)의 고정 입력을 다시 확보해야 한다. 현재 서비스는 보존된 catalog를 읽으며 원본 다운로드를 요구하지 않는다.
 - 용량은 완전 RPT의 방전 counter 차이로 구하고 전류 적분으로 대조한다. tester `cycleNumber`를 열화 단계의 고유 ID로 쓰지 않는다.
 - 저항은 두 완화 step의 정확한 +1초 ΔV/ΔI 공통 적합, OCV는 C/5 전압의 I·R 보정 등가곡선이다. 평형 OCV 실측이나 모든 SOC/온도의 저항 인증이 아니다.
 - 4S2P는 같은 셀을 복제한 가상 팩 가정이다. `Q_pack=Q_cell*2`, `R_pack=R_cell*4/2`를 runtime의 Ah/Ω와 연결한다.
 - 95% 단계의 저항이 초기보다 조금 낮은 것을 보존한다. 열화 순서를 보기 좋게 강제하거나 지원하지 않는 낮은 SOH 단계를 합성하지 않는다.
-- `generate` 결과의 곡선 배열은 `write_model`을 거쳐 C++에 들어간다. 실행 중 매 tick마다 원본 CSV를 읽거나 `ProfileReplay`를 호출하지 않는다.
+- `generate` 결과의 곡선 배열은 `write_model`을 거쳐 C++에 들어간다. 실행 중 매 tick마다 원본 CSV를 읽거나 시간축 데이터를 재생하지 않는다.
 - 체크포인트: “실측 / 파생 추정 / 가정 / 미검증을 분리하고, 같은 셀 네 RPT를 독립 학습 셀 네 개로 볼 수 없는 이유를 말할 수 있는가?”
 - **외부 문서 시점:** CMU eVTOL Battery Dataset **version 3**, DOI `10.1184/R1/14226830.v3`의 버전·파일 설명부터 확인한다. 공식 metadata의 `url_public_html`이 원자료 페이지다. 상세 RPT/저항 산정은 프로젝트 provenance와 그 출처를 대조한다. 데이터셋의 VAH 원자료와 처리된 impedance 자료를 같은 것으로 읽지 않는다.[17]
 
@@ -202,7 +203,7 @@ C++는 이 프로젝트에 등장하는 `struct`, 참조/`const`, `std::array`, 
 | 6 | [`tests/test_sim_service.py`](../tests/test_sim_service.py): `PowerStatusTest`, `RecorderShutdownTest`, `WorldResetLifecycleTest` | 불필요 재조회와 필요한 적용 대기, 최종 recorder 오류 전파, epoch reset 순서. mock을 실제 비행으로 읽지 않는다. |
 | 7 | [`tests/test_runtime_files.py`](../tests/test_runtime_files.py): `RuntimeFilesTest.test_ipc_markers_across_chunk_boundaries`; [`tests/test_cmu_aging.py`](../tests/test_cmu_aging.py): `StageSelectionTests.test_requires_four_distinct_measured_nearest_stages` | chunk 경계 검사 보존과 실제 단계 선택/합성 거부. 실제 원본 검증은 `PublicationTests`의 별도 조건부 시험이다. |
 | 8 | [`tests/test_bridge_lifecycle.py`](../tests/test_bridge_lifecycle.py): `BridgeLifecycleTest`; [`tests/test_bridge_shutdown.py`](../tests/test_bridge_shutdown.py): `BridgeShutdownTest` | 지연 callback·시작 실패·frozen clock·native reap. 테스트 메서드→`_check`→HARNESS 해당 mode 순서로 좁혀 읽는다. |
-- 추가 안전 판정은 [`tests/test_e2e_safety.py`](../tests/test_e2e_safety.py), [`tests/test_cleanup_regressions.py`](../tests/test_cleanup_regressions.py)에서 찾되 최초 회독의 필수 전체 독서로 늘리지 않는다. 소스 확인 범위는 JSON에 구분했다.
+- 추가 안전 판정은 [`tests/test_e2e_safety.py`](../tests/test_e2e_safety.py), [`tests/test_cleanup_regressions.py`](../tests/test_cleanup_regressions.py)에서 찾되 최초 회독의 필수 전체 독서로 늘리지 않는다.
 - 각 시험에서 준비값 → 호출 → 기대값 → 실패 시 cleanup만 밑줄 친다. 테스트 제목, 과거 문서의 통과 기록, 이번 실행 결과를 서로 바꿔 말하지 않는다.
 - [`CMakeLists.txt`](../CMakeLists.txt)의 target/option과 [`px4/src/CMakeLists.txt`](../px4/src/CMakeLists.txt), [`px4/src/modules/arion_motor_bridge/CMakeLists.txt`](../px4/src/modules/arion_motor_bridge/CMakeLists.txt)는 마지막에 연결만 확인한다. 이 지도는 빌드를 요구하지 않는다.
 - 마무리 설명: 두 손추적을 파일 검색 없이 말하고, 관측/정답 분리·단위/시계·활성/fixture·overlay 경계·종료 실패 한 가지씩 근거 함수로 돌아가 확인한다.
