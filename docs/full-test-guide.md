@@ -22,7 +22,7 @@
 - Ubuntu의 기존 `simulation/` 저장소, `.venv`, Gazebo Harmonic, 고정 PX4·전용 overlay·Plugin·sender·디코더가 준비돼 있어야 한다.
 - 기존 `config/service.local.json`이 있는 PC는 **재설치·init·재빌드를 반복하지 않는다.** 새 PC라면 먼저 [서비스 가이드 8절](cmu-service-guide.md#8-다른-팀원의-pc에서-준비하는-순서)을 끝낸다.
 - 다른 서비스/시험이 같은 PX4 instance를 쓰고 있으면 동시에 진행하지 않는다. stock/fixed fixture와 CMU 운영 서비스를 섞지 않는다.
-- 이번 설명은 사용자 실행 절차다. 문서 작성 중 시뮬레이터·전체 회귀를 새로 실행하지 않았다. 과거 확인과 사용자가 이번에 확인한 결과를 구분한다.
+- 이번 설명은 사용자 실행 절차이며 특정 시험의 실행·통과 보고가 아니다. 승인된 정리 후 과거 비행 원문·검증 산출물은 로컬에 보관하지 않는다. 과거 확인 이력과 사용자가 이번에 확인한 결과를 구분한다.
 
 ## 2. 두 터미널과 결과 폴더 준비
 
@@ -403,16 +403,16 @@ python tools/arion_sim.py gui
 
 ### 11-A. 자동 시험의 범위
 
-2026-10-04 기준 제어 문맥 수집 추가 후 추적 소스를 Git 목록·AST·CMake로 집계하면 **unittest 16모듈/128메서드**, **CTest 기본 3개·coupled 옵션 ON일 때 8개**, 별도 **compile-only 계약 1개**다. 이것은 소스의 시험 수이지 이번에 실행·통과한 수가 아니다. `subTest` 반복도 별도 메서드로 더하지 않았다.
+미사용 파일 정리 후 유지하는 추적 소스를 Git 목록·AST·CMake로 집계하면 **unittest 14모듈/94메서드**, **CTest 기본 3개·coupled 옵션 ON일 때 8개**, 별도 **compile-only 계약 1개**다. 이것은 소스의 시험 수이지 이번에 실행·통과한 수가 아니다. `subTest` 반복도 별도 메서드로 더하지 않았다.
 
-이번 추가에서 실행한 것은 collector 전체와 서비스 telemetry/정책/world-reset/종료의 **집중 17시험**이다. 합성 UDP와 mock 경계가 통과했으며 PX4/Gazebo 비행·전체 자동 회귀를 다시 수행한 것은 아니다. 아래 표의 사용자 실행 결과는 별도로 남긴다.
+제어 문맥 추가 당시에는 collector 전체와 서비스 telemetry/정책/world-reset/종료의 **집중 17시험**을 실행했다고 기록했다. 합성 UDP와 mock 경계의 과거 통과 이력이지 이번 정리의 검증 결과가 아니며, 당시 시험 산출물도 정리 후 미보관이다. 아래 표의 사용자 실행 결과는 별도로 남긴다.
 
 주의할 점:
 
 - `python -m unittest discover -s tests`는 **opt-in 없이 실제 Gazebo를 시작**한다. 단순한 정적 검사 명령이 아니다.
 - 그 discover는 collector·CTest·독립 E2E·비행·CMU 운영 인수시험을 모두 실행하지 않는다.
-- 실종료 회귀 4개는 `ARION_RUN_E2E_REGRESSION=1`, 실원본 발행 1개는 `CMU_AGING_RAW_DIR`가 있어야 실행된다. 따라서 기본 discover의 `OK (skipped=5)`를 전체 통과라고 적지 않는다.
-- collector는 아래의 **정확한 파일 패턴**으로 선택한다. 로컬에 남아 있을 수 있는 ignored `test_collector.py`는 현재 제외된 이전 계약 시험이므로 `test*.py`로 함께 수집하지 않는다.
+- 실종료 회귀 4개는 `ARION_RUN_E2E_REGRESSION=1`, 실원본 발행 1개는 `CMU_AGING_RAW_DIR`가 있어야 실행된다. 정리 후 실원본은 별도 재취득이 필요하다(11-F). 따라서 기본 discover의 `OK (skipped=5)`를 전체 통과라고 적지 않는다.
+- collector는 아래의 **정확한 파일 패턴** `test_continuous_collector.py`로 선택한다.
 
 ### 11-B. 경로와 시험 전용 빌드 준비
 
@@ -429,7 +429,7 @@ repo = Path.cwd()
 cfg = json.loads((repo / 'config/service.local.json').read_text())
 paths = {}
 for name, key in [('PX4_DIR', 'px4_source'), ('PX4_BINARY', 'px4_binary'),
-                  ('DECODER', 'decoder'), ('IPC_DIR', 'ipc_dir')]:
+                  ('DECODER', 'decoder')]:
     p = Path(cfg[key]).expanduser()
     paths[name] = (p if p.is_absolute() else repo / p).resolve()
 manifest = paths['PX4_BINARY'].parent.parent / 'manifest.json'
@@ -446,11 +446,11 @@ PY
 mkdir -p ../artifacts
 export TEST_OUT="$(mktemp -d "$(cd .. && pwd)/artifacts/code-tests-XXXXXXXX")"
 export CPP_BUILD="$TEST_OUT/cpp"
-mkdir -p "$TEST_OUT/tmp" "$TEST_OUT/motor" "$TEST_OUT/overlay" "$TEST_OUT/battery"
+mkdir -p "$TEST_OUT/tmp" "$TEST_OUT/motor" "$TEST_OUT/overlay"
 export PYTHONDONTWRITEBYTECODE=1 TMPDIR="$TEST_OUT/tmp"
 unset PYTHONOPTIMIZE ARION_RUN_E2E_REGRESSION CMU_AGING_RAW_DIR
 export ARION_TEST_ROOT="$TEST_OUT/motor" ARION_TEST_ARTIFACT_ROOT="$TEST_OUT/motor"
-export ARION_OVERLAY_TEST_ROOT="$TEST_OUT/overlay" ARION_BATTERY_TEST_ROOT="$TEST_OUT/battery"
+export ARION_OVERLAY_TEST_ROOT="$TEST_OUT/overlay"
 export ARION_PX4_SOURCE="$PX4_DIR"
 export PYTHONPATH="$SIM_DIR/tests${PYTHONPATH:+:$PYTHONPATH}"
 ```
@@ -468,7 +468,7 @@ cmake --build "$CPP_BUILD" --parallel 2 &&
 ctest --test-dir "$CPP_BUILD" --output-on-failure
 ```
 
-**통과 기준:** 전체 build 성공, CTest 8개 통과. `battery_contract_compile_test`는 `static_assert`를 컴파일하는 object target이므로 별도 실행 결과/CTest 항목은 없다. 운영 서비스 가이드의 세 target만 빌드한 폴더에는 FixedMotor/FixedBattery/observer·시험 실행파일이 없을 수 있다. 이 단계는 target을 제한하지 않아 함께 만든다.
+**통과 기준:** 전체 build 성공, CTest 8개 통과. `battery_contract_compile_test`는 `static_assert`를 컴파일하는 object target이므로 별도 실행 결과/CTest 항목은 없다. 운영 서비스 가이드의 세 target만 빌드한 폴더에는 FixedMotor·시험 실행파일이 없을 수 있다. 이 단계는 target을 제한하지 않아 함께 만든다. 제거된 고정 배터리 Plugin이나 비행 observer는 필요하지 않다.
 
 CTest의 이름은 `motor_frame_mapping`, `motor_frame_nonfinite`, `motor_frame_rpm_range`, `coupled_power_model`, `cmu_power_model`, `power_control_mailbox`, `power_control_cli_contract`, `power_control_sdf_callback`이다. CTest 성공만으로 실제 Gazebo/PX4 연결이나 비행을 검증한 것은 아니다.
 
@@ -503,8 +503,8 @@ ln -sT "$DECODER" ../hermes/mavlink/px4_messages.py
 python -B -m unittest -v \
   test_bridge_lifecycle test_bridge_worker test_bridge_shutdown \
   test_cleanup_regressions test_e2e_safety.CleanupTest test_e2e_safety.OptimizationTest \
-  test_px4_console test_coupled_server_config test_power_flight_analysis \
-  test_cmu_aging test_cmu_evtol_profiles test_continuous_io \
+  test_px4_console test_coupled_server_config \
+  test_cmu_aging test_continuous_io \
   test_runtime_files test_sim_service test_sitl_overlay
 ```
 
@@ -525,13 +525,11 @@ python -B -m unittest discover -s tools/mavlink_collector \
 | `test_bridge_worker` | 2 | 실제 pthread의 늦은 entry/owner |
 | `test_bridge_shutdown` | 9 | 고정 시계·종료 deadline·native 회수 |
 | `test_cleanup_regressions` | 14 | 합성 프로세스·socket·PTY·FD 오류 회귀 |
-| `test_cmu_aging` | 7 | 합성 6 + opt-in 전체 원본 1 |
-| `test_cmu_evtol_profiles` | 32 | 합성 6-profile 번들·무결성·split·실패 안전성 |
+| `test_cmu_aging` | 7 | 합성 6 + opt-in 전체 원본 1; 원본 재취득 필요 |
 | `test_continuous_io` | 3 | sender C++/합성 UDP·시간 공백·종료 |
 | `test_coupled_server_config` | 1 | 필수 센서 system XML 검사; 센서 실행 아님 |
 | `test_e2e_safety` | 10 | 합성 안전성 6 + opt-in 실제 종료회귀 4 |
 | `test_gazebo_motor` | 2 | 실제 Gazebo의 fixed 전달/주기; 11-E에서 선택 |
-| `test_power_flight_analysis` | 2 | 합성 데이터의 판정 함수; 실제 비행 아님 |
 | `test_px4_console` | 2 | Python PTY fixture; 실제 PX4 아님 |
 | `test_runtime_files` | 4 | 합성 ELF/IPC·소유자 불명 거부 |
 | `test_sim_service` | 17 | 서비스 정책·9종 stream 설정/제어 API·파일·mock world-reset |
@@ -568,42 +566,18 @@ ARION_PLUGIN_BUILD="$CPP_BUILD" ARION_DECODER="$DECODER" \
 
 이 회귀는 **하위 report의 `passed: false`와 하위 실패 종료가 기대값**이다. outer unittest가 주입 오류·관측·소유 그룹 종료를 정확히 확인하고 성공했는지 본다. 정상 E2E의 통과 판정과 혼동하지 않는다.
 
-**④ 고정 배터리 왕복:** FixedMotor/FixedBattery, sender, observer, overlay를 사용하는 별도 Disarmed 시험이다. 기본 운영 instance와 같은 35를 쓰므로 운영 서비스를 먼저 정상 종료한다.
+정상 fixed motor E2E는 **exit 0 + `report.passed: true` + 정상 cleanup**을 함께 확인한다. `E2E_EVIDENCE`는 결과 폴더 위치이지 성공 인증이 아니다. 중단·종료 예외로 보고서가 없거나 불완전하면 실패/미완료로 남기고 소유 PID·정확한 instance 자원을 조사한다. 모든 예외 경로에서 자동 회수가 보장된다고 가정하지 않는다. 현재 CMU 서비스의 배터리 연동·비행 인수시험은 앞의 2~10절을 따른다.
 
-```bash
-args=(--px4-source "$PX4_DIR" --px4-binary "$PX4_BINARY"
-      --plugin-build "$CPP_BUILD" --decoder "$DECODER"
-      --artifacts "$TEST_OUT/coupled-live" --ipc-dir "$IPC_DIR" --instance 35)
-python -B tools/run_coupled_flight.py "${args[@]}" --mode fixed
-```
+### 11-F. 실제 CMU 원본 발행 — 고정 입력 재취득 후 별도 선택
 
-**⑤ 기존 연동 모델 비행:** 바로 앞에서 정의한 `args`를 사용한다. 이 명령은 실제 가상 기체를 이륙·호버·착륙시키므로 별도로 선택한다. `--fly`를 빼거나 정상 preflight를 우회하지 않는다.
-
-```bash
-python -B tools/run_coupled_flight.py "${args[@]}" --mode flight --fly --hover-seconds 8
-```
-
-④/⑤에는 `arion_power_observer`도 필요하다. ⑤는 기존 assumed-linear reference 모델·전용 수신기를 쓰며 **CMU 네 프로파일/운영 공용 수집기 인수시험이 아니다.** 그것은 앞의 2~10절로 확인한다. `tests/battery_fixture.sdf`도 보존된 보조 fixture일 뿐 위 suite가 자동 실행하는 별도 시험이 아니다.
-
-정상 E2E/왕복/비행은 **exit 0 + `report.passed: true` + 정상 cleanup**을 함께 확인한다. `E2E_EVIDENCE`/`RUN_EVIDENCE`는 결과 폴더 위치이지 성공 인증이 아니다. 중단·종료 예외로 보고서가 없거나 불완전하면 실패/미완료로 남기고 소유 PID·정확한 instance 자원을 조사한다. 모든 예외 경로에서 자동 회수가 보장된다고 가정하지 않는다.
-
-### 11-F. 실제 CMU 원본과 보존 번들 — 별도 선택
-
-전체 VAH01 원본을 가진 경우에만 경로를 바꿔 실행한다. 이 시험은 원본 폴더의 **부모 아래 임시 catalog**를 생성하므로 부모 쓰기 권한이 필요하다. 원본은 보존한다.
+내려받은 원본은 정리 후 로컬에 보관하지 않는다. **전체 VAH01과 고정 참고 입력을 다시 확보한 경우에만** 경로를 바꿔 실행한다. 기존 시험의 검증 조건을 완화하거나 합성 자료로 대체하지 않는다. 이 시험은 원본 폴더의 **부모 아래 임시 catalog**를 생성하므로 부모 쓰기 권한이 필요하다. 재취득한 원본은 보존한다.
 
 ```bash
 CMU_AGING_RAW_DIR="$HOME/px4-workspace/battery-data/cmu-evtol-v3" \
   python -B -m unittest -v test_cmu_aging.PublicationTests
 ```
 
-`VAH01.csv`, `VAH01_impedance.csv`, `README.txt`, `cmu-v3.json`, `article.xml`의 고정 크기/checksum을 요구한다. 잘린 prefix나 합성 CSV로 대체하지 않는다. 원본 준비 근거는 [CMU runtime 프로파일](cmu-runtime-profiles.md)을 따른다. `ARION_CMU_SOURCE`/`ARION_CMU_VAH01_SOURCE`라는 변수는 현재 이 시험의 설정이 아니다.
-
-다음은 저장소에 보존한 **초기 6개 정상 번들** 검사이며 전체 원본 발행/CMU 실비행/AI 성능 시험과 다르다.
-
-```bash
-python -B tools/battery_profiles/cmu_evtol.py verify \
-  --bundle profiles/battery/cmu_evtol_normal_soh100
-```
+`VAH01.csv`, `VAH01_impedance.csv`, `README.txt`, `cmu-v3.json`, `article.xml`이 필요하다. 추출기는 앞의 세 파일의 고정 크기/MD5와 API metadata의 버전·파일 식별을 검사한다. 당시 산출물의 byte 재현에는 metadata/XML도 보존된 provenance의 hash와 일치해야 한다. 잘린 prefix나 합성 CSV로 대체하지 않는다. 원본 준비 근거는 [CMU runtime 프로파일](cmu-runtime-profiles.md#재생성)을 따른다. `ARION_CMU_SOURCE`/`ARION_CMU_VAH01_SOURCE`라는 변수는 현재 이 시험의 설정이 아니다. 원본 미확보로 실행하지 못한 `PublicationTests`는 통과가 아니라 미실행으로 남긴다.
 
 ### 11-G. 자동 시험 완료표
 
@@ -622,10 +596,9 @@ python -B -m unittest discover -s tools/mavlink_collector \
 | simulator 없는 Python 선택·collector | 미실행 | unittest 결과·skip 수·시험 폴더 |
 | Gazebo-only·정상 fixed motor E2E | 미실행 | probe·raw·report·cleanup |
 | 실제 종료 음성 회귀 4개 | 미실행 | outer unittest 및 예상한 하위 실패 |
-| 고정 배터리 왕복·기존 모델 비행 | 미실행 | 각 run의 report·raw·cleanup |
-| CMU 실제 원본 발행·초기 번들 verify | 미실행 | 각기 다른 입력/출력과 결과 |
+| CMU 실제 원본 발행 | 미실행(원본 재취득 필요) | 고정 입력·발행 결과·checksum |
 | CMU 운영 인수시험 | 미실행 | 10절 완료표 |
 
 skip, 미선택, 실패, 통과를 구분한다. sanitizer 오류나 소유 자원 잔류를 단순한 “예상 실패”로 덮지 않는다. 시험의 종료 코드만으로 GUI 안정성·장기 내구성·AI 정확도까지 통과 처리하지 않는다.
 
-자동 시험의 소스는 [CMakeLists.txt](../CMakeLists.txt), [tests](../tests), [collector 시험](../tools/mavlink_collector/test_continuous_collector.py)에 있다. 고정값 시험의 상세 배경은 [motor guide](motor-fixed-run-guide.md), [battery guide](battery-fixed-run-guide.md), [coupled flight guide](coupled-flight-run-guide.md)를 참고한다.
+자동 시험의 소스는 [CMakeLists.txt](../CMakeLists.txt), [tests](../tests), [collector 시험](../tools/mavlink_collector/test_continuous_collector.py)에 있다. 고정 모터 시험의 상세 배경은 [motor guide](motor-fixed-run-guide.md), 현재 배터리·비행 운용은 [CMU 서비스 가이드](cmu-service-guide.md)를 참고한다.

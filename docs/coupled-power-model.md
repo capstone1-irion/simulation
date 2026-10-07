@@ -8,6 +8,11 @@ The active operator entry point is `tools/arion_sim.py`; use the standalone
 the vehicle in the run's initial `world.sdf`, and connects PX4 to that existing
 vehicle with `PX4_GZ_MODEL_NAME`.
 
+Runtime observations below are **historical records**, not new verification.
+The approved purge does not retain their raw flight logs or validation outputs
+locally; those files cannot now be used for evidence readback. Current runtime
+sources, the CMU catalog/CSVs/provenance and active build dependencies remain.
+
 - The four measured same-cell RPT stages have relative capacities
   **100.000000 / 95.027445 / 90.422638 / 84.812594%**. The virtual **4S2P** pack is
   an assumption, not a measured x500 pack. Cell OCV is a discharge-derived
@@ -16,8 +21,8 @@ vehicle with `PX4_GZ_MODEL_NAME`.
   slightly below the initial value; no monotonic aging trend is imposed.
 - The active catalog supplies each stage's capacity, resistance, OCV curve and
   initial SOC. It does **not** use the original **5 Ah / 0.04 Ω / linear OCV**
-  defaults below. Those defaults and the original normal-flight evidence remain
-  documented as the legacy reference path.
+  defaults below. Those defaults and the original normal-flight findings remain
+  documented as a legacy reference, not a retained standalone flight workflow.
 - Current motor-fault controls scale modeled current and reported RPM. The
   changed current enters the battery load; propulsion forces, joint motion and
   flight-control outputs are not directly changed. This is still one-way
@@ -33,15 +38,17 @@ vehicle with `PX4_GZ_MODEL_NAME`.
   disarm) have been observed separately. These are not 24/7 endurance evidence;
   final CLI stop and cleanup were also confirmed separately: all owned current
   and prior-epoch processes exited 0, with no forced kill or surviving groups,
-  and owned IPC/control sockets were removed. The service is now stopped.
-- The initial six-profile `cmu_evtol_normal_soh100` bundle remains a separate
-  offline reference/replay product. NASA is retired from active inputs; it is
-  not an alternate runtime source.
+  and owned IPC/control sockets were removed for that run. This is not a live
+  service-status check.
+- The initial six-profile bundle and replay tooling are removed from the
+  retained tree. NASA is retired from active inputs; it is not an alternate
+  runtime source. CMU regeneration and real-source publication tests require
+  reacquiring the pinned originals; current service execution uses the retained
+  catalog without those originals.
 
 See [CMU derivation and limits](cmu-runtime-profiles.md),
 [catalog](../profiles/battery/cmu_runtime/catalog.json),
-[provenance](../profiles/battery/cmu_runtime/provenance.json),
-[initial-normal bundle](cmu-evtol-normal-profile-guide.md), and
+[provenance](../profiles/battery/cmu_runtime/provenance.json), and
 [NASA retirement](nasa-retirement.md). Source attribution is in
 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
 
@@ -58,13 +65,15 @@ one reference battery. Existing flight-control commands, motor physics, joint
 velocity commands and forces are never modified. The only requested ECM state is
 the joint-velocity observation component.
 
-The existing fixed plugins, fixed `custom_x500` model, reviewed motor bridge and
-battery sender remain separate. **Do not attach the coupled plugin and a fixed
+The fixed motor plugin, fixed `custom_x500` model, motor bridge and battery
+sender remain separate; the fixed battery plugin/model have been removed.
+**Do not attach the coupled plugin and a fixed
 state publisher to the same model at once**: their topic/schema contracts are
 intentionally identical. A model which merge-includes stock `model://x500` and
-attaches only this extra plugin works with the defaults. The parent integration's
-`custom_x500_power` additionally disables command fallback, so its flight evidence
-requires actual simulated joint observations.
+attaches only this extra plugin uses the defaults. The now-removed
+`custom_x500_power` additionally disabled command fallback, so its historical
+flight observations required actual simulated joint observations. The current
+service generates `custom_x500_cmu` and does not need that old model.
 
 This implementation is an uncalibrated simulation reference, not measured drone
 telemetry, a calibrated battery pack, degradation/SOH, or evidence of real-drone
@@ -205,8 +214,8 @@ Gazebo dependencies.
 All tags below are optional in the legacy path. Without a profile catalog, the
 plugin selects the legacy defaults; the CMU service instead supplies
 `battery_profiles/profile` entries and an `initial_profile`. The following XML
-is **not a CMU configuration**. The
-parent's `custom_x500_power` explicitly sets `allow_command_fallback=false`.
+is **not a CMU configuration**. The removed initial flight model explicitly
+set `allow_command_fallback=false`.
 Attach this inside the model, retaining all stock x500
 propulsion plugins and omitting fixed Arion state publishers:
 
@@ -229,7 +238,7 @@ range configuration disables the plugin with an error; no silent default on a
 present invalid tag. Fallback's time constants and 1000 rad/s limit are fixed to
 the inspected stock x500 configuration.
 
-## Original focused implementation evidence
+## Original focused implementation evidence (historical)
 
 The implementation worker wrote only these four new repository paths:
 
@@ -238,10 +247,12 @@ The implementation worker wrote only these four new repository paths:
 - `tests/coupled_power_model_test.cpp`
 - `docs/coupled-power-model.md`
 
-Evidence under `../hermes/coupled-flight/model/` relative to the simulation repo:
+Historical output location: `../hermes/coupled-flight/model/` relative to the
+simulation repo. The logs, helper scripts and evidence JSON listed below are
+not retained after the purge; this list describes the original recorded scope.
 
 - `01-joints-red.log` … `12-clocks-green.log`: six small RED→GREEN increments.
-  Missing-feature compile failures and behavioral failures are retained as such,
+  Missing-feature compile failures and behavioral failures were recorded as such,
   not represented as successful execution. Final native C++17 pure tests: six
   named cases passed (joint response/current table, modeled fallback response,
   current sum/SOC/sag/existing wire contracts, sim-time/pause/rewind, input/config
@@ -251,14 +262,14 @@ Evidence under `../hermes/coupled-flight/model/` relative to the simulation repo
 - `14-plugin-build-fixed.log`: strict native shared-library build succeeded;
   `ldd -r` exited 0 with no unresolved symbols. Built against installed Gazebo
   Sim 8.15.0 / Transport 13.6.0 / Msgs 10.4.0.
-- `run_focused.py`, `build_plugin.py`: exact bounded compile/test commands and
-  per-stage source hashes; `final-evidence.json` binds final source/binary hashes.
+- `run_focused.py`, `build_plugin.py`: recorded bounded compile/test commands and
+  per-stage source hashes; `final-evidence.json` recorded final source/binary hashes.
 
 No Gazebo/PX4 runtime, packet-route verification, whole-repository test suite,
-independent review or flight was run by this worker. CMake and the new opt-in
-flight model are parent-owned integration changes. Runtime loading, observed
-JointVelocity provenance, custom takeoff/hover/landing, PX4 re-streaming and
-cleanup must be established by the parent's separate flight evidence.
+independent review or flight was run by this worker. CMake and the former opt-in
+flight model were separate integration changes. The worker's build-only result
+did not establish runtime loading, JointVelocity provenance, flight, PX4
+re-streaming or cleanup; the separate historical integration is described below.
 
 API checks used installed `gz/sim8/gz/sim/Joint.hh`, `System.hh`,
 `components/JointVelocity.hh`, `gz/transport13/gz/transport/Node.hh`, and official
@@ -273,9 +284,11 @@ On 2026-10-04 KST, the parent built the opt-in CMake targets and ran the separat
 takeoff, 8-second hover near 3 m, landing and automatic disarm passed. The parent
 matched hover producer data to PX4 uORB snapshots and autopilot-origin MAVLink.
 This supplements (does not rewrite) the worker's build-only scope above.
-Evidence: project `hermes/coupled-flight/runs/flight-zgit9bn0/` and
-`hermes/coupled-flight/runtime-readback.json`. See `coupled-flight-run-guide.md`
-and `coupled-flight-data-contract.md`. At that original stage, live world reset
+Historical output paths (not retained): project
+`hermes/coupled-flight/runs/flight-zgit9bn0/` and
+`hermes/coupled-flight/runtime-readback.json`. The standalone harness, initial
+model and its run/data-contract guides are removed from the retained tree.
+At that original stage, live world reset
 and repeat-flight testing remained unperformed; pure-model reset tests were not
 those runtime tests. Later CMU service reset and flight observations are listed
 at the top of this document and in the [service guide](cmu-service-guide.md);

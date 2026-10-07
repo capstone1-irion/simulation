@@ -15,6 +15,8 @@ PX4 SITL과 Gazebo 기반 배터리·모터/ESC 상태 생성 및 MAVLink 데이
 
 제어 문맥(`POSITION_TARGET_LOCAL_NED`, `ATTITUDE_TARGET`, `ACTUATOR_OUTPUT_STATUS`)은 수집·조회 코드와 합성 시험에 더해 **2026-10-04 실제 로컬 SITL의 목표 3m 이륙·호버·착륙에서 수신·저장·최신값 조회를 확인**했습니다. 해당 실행에서 총 9종 2,617건을 저장하고 정상 Disarm·종료까지 확인했습니다. 실기체·모든 비행 모드·AI 시간 정렬 검증은 별도입니다. 학습에는 정상만 사용하되, 최종 성능 평가는 독립된 정상·비정상 데이터로 구분하는 방침입니다.
 
+이 문서의 실행 관측·수치는 **과거 이력**입니다. 승인된 정리 후 당시 비행 원문·검증 산출물은 로컬에 보관하지 않으므로 현재 파일로 재대조할 수 없습니다. 문서 갱신은 새 런타임 검증이 아닙니다.
+
 ## 현재 사용: CMU 상시 운영 서비스
 
 이미 준비된 PC는 기존 `config/service.local.json`을 사용하며, 다른 PC의 준비 순서는 서비스 사용 가이드에 있습니다. 개인 계정 경로나 에이전트 실행 환경을 요구하지 않습니다.
@@ -22,12 +24,12 @@ PX4 SITL과 Gazebo 기반 배터리·모터/ESC 상태 생성 및 MAVLink 데이
 - 활성 배터리 자료는 `profiles/battery/cmu_runtime/catalog.json`입니다. 같은 CMU VAH01 셀의 실제 RPT에서 선택한 상대 용량 **100.000000 / 95.027445 / 90.422638 / 84.812594%**의 네 프로파일을 사용합니다. 4S2P는 가상 팩 가정이며 등가 OCV·유효 저항 추정의 한계는 [프로파일 근거](docs/cmu-runtime-profiles.md)에 있습니다.
 - 모터 joint 기반 RPM·bench 전류와 배터리를 단방향으로 연동합니다. 모터별 전류/보고 RPM 이상 주입은 **전기 부하·텔레메트리 이상**이지 추진력 고장이 아닙니다. AI 입력용 PX4 MAVLink 원문과 주입 정답은 별도 기록합니다.
 - 시작은 Disarmed이며 이륙은 별도 명령입니다. 시간 제한 없는 운영 루프와 파일별 로그 회전을 제공하지만, 24/7 내구성·전체 디스크 보관 상한·장애 자동 복구·부팅 자동 실행을 보장하지 않습니다. pause 중에는 최근 수신도 새 센서 생성의 증거가 아닙니다.
-- 지상 네 프로파일 선택·원문 전압 대조, 7초 pause/resume, **지상 `world-reset` 복구와 새 PX4 epoch에서 두 차례 비행**을 확인했습니다. 정상 100%와 열화 84.812594%에서 목표 3m 이륙·호버, 모터 1·4 이상 주입/해제, 착륙·자동 Disarm을 관측했습니다. world-reset은 초기 world에 기체를 포함하고 PX4/sender만 재시작해 같은 서비스·Gazebo·수집기·run을 유지합니다. 짧은 수신 공백과 `px4_epoch` 경계를 기록하며 정확히 3m 정지나 무중단 메시지 수신을 뜻하지 않습니다. 최종 CLI 종료와 소유 프로세스·IPC 정리도 확인했으며 현재 서비스는 종료 상태입니다. 대규모·24/7 내구성·GUI 화면 확인은 수행하지 않았습니다.
-- `cmu_evtol_normal_soh100`의 초기 정상 6개 프로파일은 [오프라인 참고·재생 도구](docs/cmu-evtol-normal-profile-guide.md)로 보존합니다. 네 런타임 프로파일과 용도가 다릅니다. NASA 구성은 [활성 경로에서 제외](docs/nasa-retirement.md)되었으며 출처는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)에 안내합니다.
+- 지상 네 프로파일 선택·원문 전압 대조, 7초 pause/resume, **지상 `world-reset` 복구와 새 PX4 epoch에서 두 차례 비행**을 확인했습니다. 정상 100%와 열화 84.812594%에서 목표 3m 이륙·호버, 모터 1·4 이상 주입/해제, 착륙·자동 Disarm을 관측했습니다. world-reset은 초기 world에 기체를 포함하고 PX4/sender만 재시작해 같은 서비스·Gazebo·수집기·run을 유지합니다. 짧은 수신 공백과 `px4_epoch` 경계를 기록하며 정확히 3m 정지나 무중단 메시지 수신을 뜻하지 않습니다. 해당 실행의 최종 CLI 종료와 소유 프로세스·IPC 정리도 확인했습니다. 대규모·24/7 내구성·GUI 화면 확인은 수행하지 않았습니다.
+- 초기 정상 6개 프로파일 번들과 재생 도구는 삭제했으며 현재 사용 경로가 아닙니다. 활성 `cmu_runtime` 카탈로그·CSV·provenance와 `cmu_aging.py`는 유지합니다. 내려받은 CMU 원본은 보관하지 않으므로 재생성·실원본 시험에는 [고정 입력 재취득](docs/cmu-runtime-profiles.md#재생성)이 필요합니다. NASA 구성은 [활성 경로에서 제외](docs/nasa-retirement.md)되었으며 출처는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)에 안내합니다.
 
 ## 범위
 
-- Gazebo `custom_x500`, Custom Motor Plugin, Custom Battery Plugin
+- Gazebo stock x500 기반으로 run마다 생성하는 `custom_x500_cmu`, 모터·배터리 부하 연동 Plugin
 - 별도 PX4 모듈 `arion_motor_bridge` 및 uORB 연동
 - 외부 배터리 입력과 PX4 MAVLink 재송신 검증
 - 수신 전용 텔레메트리 수집·저장, 정상/이상 실험 시나리오
@@ -37,7 +39,7 @@ PX4 SITL과 Gazebo 기반 배터리·모터/ESC 상태 생성 및 MAVLink 데이
 | 경로 | 역할 |
 | --- | --- |
 | `plugins/motor/` | 초기 고정값 모터 상태 시험 플러그인 |
-| `plugins/battery/` | 고정값 배터리 전달 시험 플러그인 |
+| `tools/battery_sender.cpp` | 활성 모델의 배터리 상태를 PX4 외부 입력으로 전달 |
 | `plugins/power/` | 활성 CMU 모터·배터리 부하 연동 플러그인 |
 | `models/custom_x500/` | 초기 고정값 시험 기체 모델 및 설정 |
 | `px4/src/modules/arion_motor_bridge/` | PX4 out-of-tree 브리지 모듈 |
@@ -45,7 +47,6 @@ PX4 SITL과 Gazebo 기반 배터리·모터/ESC 상태 생성 및 MAVLink 데이
 | `tools/arion_sim.py`, `tools/sim_service/` | 상시 운영 CLI와 소유 프로세스·제어 관리 |
 | `tools/mavlink_collector/` | 수신 전용 MAVLink 원문·품질 주석·회전 기록 |
 | `profiles/battery/cmu_runtime/` | 활성 CMU 네 프로파일·SOC 등가곡선·출처 |
-| `scenarios/` | 비행·이상 주입 실험 정의 |
 | `tests/` | 파트 검증 |
 | `docs/` | 파트별 빌드·실행 문서 |
 

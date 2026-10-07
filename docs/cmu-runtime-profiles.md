@@ -8,8 +8,8 @@
 - 공통 계약: `arion.cmu_battery_profiles.v1`, 4S2P, 초기 SOC 0.95.
 - 각 CSV는 **SOC → 셀 등가 OCV** 조회표다. 시간축 V/I 재생 파일이 아니다.
 - 카탈로그에 실측값과 파생 추정값, 가상 팩 설계 가정을 따로 기록했다.
-- 기존 VAH01/VAH17/VAH27 초기 정상 3-cell bundle, NASA 소스, C++/CMake/서비스는 이 작업에서 변경하지 않았다. NASA 활성 구성 정리는 상위 통합 작업의 책임이다.
-- PX4/Gazebo, 비행, MAVLink 전달, AI 학습은 이 프로파일 작업에서 실행하지 않았다.
+- 활성 catalog·곡선 CSV·provenance와 `tools/battery_profiles/cmu_aging.py`는 유지한다. 초기 정상 3-cell bundle·재생기, 내려받은 CMU/NASA 원본, 과거 검증 산출물은 승인된 정리 후 로컬에 보관하지 않는다. 재생성·실원본 발행 시험에는 아래 고정 입력 재취득이 필요하며 서비스 실행에는 원본이 필요하지 않다.
+- PX4/Gazebo, 비행, MAVLink 전달, AI 학습은 당시 프로파일 작업에서 실행하지 않았다. 이 문서 갱신도 새 실행 검증이 아니다.
 
 ## 선택한 단계
 
@@ -106,11 +106,11 @@ SOC_next = clamp(SOC - I_pack * simulation_dt_seconds / (3600 * Q_pack), 0, 1)
 
 서비스는 catalog를 검증해 SDF의 `battery_profiles/profile`로 전달한다. C++ JSON 파서를 새로 만들 필요는 없다. 모델은 **현재의 모터/보조 부하 전류와 simulation dt**를 사용해야 한다. CSV 행을 wall-time에 따라 순서대로 재생하면 이 계약을 충족하지 않는다. pause 시 dt=0이어야 하고 프로파일 변경 시 선택한 용량·저항·곡선과 초기 SOC를 함께 적용해야 한다. 이 문서는 데이터 계약이며 실제 서비스의 프로파일 선택·reset·부하 반응 실행 검증을 대신하지 않는다.
 
-숨겨진 SOH·용량·저항·RPT ID는 시나리오 설정/정답용이다. 실기체에서 얻지 못하는 값을 AI 입력 특징으로 넘기지 않는다. 기존 독립 초기 정상 3-cell bundle은 별도 참고 자료로 보존하며, 이 한 셀의 열화 단계 4개로 독립 train/validation/test 셀을 구성하거나 AI를 학습했다고 표현하지 않는다.
+숨겨진 SOH·용량·저항·RPT ID는 시나리오 설정/정답용이다. 실기체에서 얻지 못하는 값을 AI 입력 특징으로 넘기지 않는다. 이 한 셀의 열화 단계 4개로 독립 train/validation/test 셀을 구성하거나 AI를 학습했다고 표현하지 않는다.
 
 ## 원본 무결성
 
-API에서 파일 ID·이름·크기·download URL·MD5를 확인했다. 전체 `VAH01.csv`와 README, impedance CSV의 MD5가 저장소 값과 일치한다.[1]
+당시 API에서 파일 ID·이름·크기·download URL·MD5를 확인했고 전체 `VAH01.csv`와 README, impedance CSV의 MD5 일치를 기록했다.[1] 아래 값은 보존된 provenance의 식별 정보이며 정리 후 로컬 원본이 존재하거나 이번에 다시 검증했다는 뜻은 아니다.
 
 | 원본 | byte 수 | 실제 MD5 |
 |---|---:|---|
@@ -128,35 +128,39 @@ VAH01 전체 SHA-256:
 
 ## 재생성
 
-Python 표준 라이브러리만 사용하며 패키지 설치나 simulator 실행이 없다. `simulation` 저장소에서 실행한다. `DATA_DIR`는 프로젝트 안의 분석/다운로드 전용 디렉터리로 지정한다.
+**먼저 고정 원본을 다시 확보해야 한다.** 보존된 catalog/CSV는 실행 입력이지 전체 원본의 대체물이 아니다. Python 표준 라이브러리만 사용하며 패키지 설치나 simulator 실행이 없다. `simulation` 저장소에서 실행한다. 아래 `DATA_DIR`는 팀원용 분석/다운로드 예시 위치이며, 제거된 과거 작업 폴더가 이미 있다고 가정하지 않는다.
 
 ```bash
-DATA_DIR="$(pwd)/../hermes/cmu-service/data"
+DATA_DIR="$HOME/px4-workspace/battery-data/cmu-evtol-v3"
 python3 -B tools/battery_profiles/cmu_aging.py \
-  --raw-dir "$DATA_DIR/raw" \
-  --output-dir "$DATA_DIR/rebuilt-cmu-runtime"
+  --raw-dir "$DATA_DIR" \
+  --output-dir "${DATA_DIR}-rebuilt-cmu-runtime"
 ```
 
 입력 폴더에는 `VAH01.csv`, `VAH01_impedance.csv`, `README.txt`, API 응답 `cmu-v3.json`, 논문 원문 `article.xml`이 필요하다. 아래 Sources의 고정 주소에서 받아 둔다. 모든 다운로드 시도에는 연결/전체 시간 상한을 두며, 120초 내 실패한 다운로드를 완료 파일로 사용하지 않는다. 대용량 응답이 중단되면 검증된 `Content-Range`와 byte 수의 범위를 재시도/결합한 뒤 **전체 MD5**를 확인한다. 이미 받은 올바른 부분은 보존할 수 있지만 전체 checksum 검증 전에는 승인 입력이 아니다.
 
+추출기의 `FILE_PINS`는 앞의 세 파일의 크기·MD5와 API metadata의 파일 식별을 고정한다. `cmu-v3.json`·`article.xml`은 당시 로컬 hash를 [provenance](../profiles/battery/cmu_runtime/provenance.json)에 기록한 참고 입력이다. 같은 URL의 현재 응답이 같은 bytes라는 보장은 없으므로 **당시 산출물의 byte 재현에는 두 문서도 기록된 hash와 일치하는 사본이 필요**하다. 일치 사본을 확보하지 못하면 동일 재생성 확인은 미완료이며 검증 조건을 완화하지 않는다. 이 정리에서 다운로드·재생성·`PublicationTests`는 실행하지 않았다.
+
 출력 폴더가 이미 있으면 덮어쓰지 않고 실패한다. 파싱·해시·수치 검증과 엄격한 JSON 직렬화를 끝낸 뒤 임시 분석 폴더에서 완성 디렉터리를 공개한다. raw 폴더와 출력은 atomic rename 가능한 같은 파일시스템을 사용한다.
 
 ```bash
-CMU_AGING_RAW_DIR="$DATA_DIR/raw" \
+CMU_AGING_RAW_DIR="$DATA_DIR" \
   python3 -B -m unittest discover -s tests -p test_cmu_aging.py -v
 ```
 
-원본 경로를 주지 않으면 실제 원본 발행 시험만 건너뛰고 합성 단위 시험을 실행한다. 합성 fixture를 CMU 실측으로 발행하지 않는다.
+원본 경로를 주지 않으면 기존 시험 조건에 따라 실제 원본 발행 시험만 건너뛰고 합성 단위 시험을 실행한다. 이는 전체 검증 통과가 아니며 `PublicationTests`는 미실행으로 남긴다. 합성 fixture를 CMU 실측으로 발행하지 않는다.
 
-## 실제 수행한 검증
+## 과거 프로파일 생성 검증 이력
+
+아래는 당시 기록이며 현재 재실행 결과가 아니다. 원본과 검증 로그·분석 산출물은 정리 후 미보관이므로 현재 로컬 증거 파일로 재대조할 수 없다. 활성 파생 산출물과 provenance의 식별·산정 정보는 유지한다.
 
 - 단계별 RED → GREEN 집중 TDD와 최종 **7 tests, skip 0, warning 0** 통과.
 - 전체 VAH01 **1,091,477 data rows** 읽기와 완전 RPT 18회 식별.
 - 별도 원본 parser로 선택 구간의 67,780개 행을 읽고, 용량·저항과 **4×101개 곡선값**을 원본 인접 행에서 독립 재계산하여 일치 확인.
 - 재생성한 catalog/CSV/provenance **6개 파일의 byte 동일성** 확인.
 - prefix 원본 거부, 미완료 RPT·비정상 전류/시간/전하/전압 거부, 지원하지 않는 70% 목표 합성 거부, 기존 출력 덮어쓰기 거부 확인.
-- 부산물: 프로젝트 `hermes/cmu-service/data/`의 `tdd-*-red.log`, `tdd-*-green.log`, `generation.json`, `download-verification.json`, `independent-audit.json`, `regeneration-comparison.json`.
-- 최초 전체 다운로드와 일부 큰 범위 다운로드는 제한시간으로 실패했다. 실패 부분/헤더를 보존했고, 빠진 범위를 제한시간 내 재취득한 뒤 전체 MD5를 확인했다. 실패를 성공으로 대체 기록하지 않았다.
+- 당시 부산물 위치는 프로젝트 `hermes/cmu-service/data/`였다. TDD 로그, 다운로드·독립 재계산·재생성 대조 결과는 현재 미보관이다.
+- 최초 전체 다운로드와 일부 큰 범위 다운로드는 제한시간으로 실패했다. 당시 실패 부분/헤더를 보존하고 빠진 범위를 제한시간 내 재취득한 뒤 전체 MD5를 확인했다고 기록했다. 그 파일들도 정리 대상이며 실패 이력을 성공으로 바꾸지 않는다.
 - **미실행:** PX4/Gazebo, 서비스 SDF 소비, 동적 부하/프로파일 전환, 비행·센서·AI 검증. 상위 통합 검증에서 별도 확인해야 한다.
 
 ## Sources

@@ -12,25 +12,29 @@ measurements.
 | Derived product | Use and changes to the source |
 |---|---|
 | `profiles/battery/cmu_runtime/` | Active runtime reference. Four measured RPT stages from the complete VAH01 lifetime CSV; derived relative capacity, effective DC 1-second resistance estimates and SOC-indexed equivalent OCV curves. The 4S2P pack, initial SOC and pack scaling are simulation assumptions. Curves are not measured equilibrium OCV. |
-| `profiles/battery/cmu_evtol_normal_soh100/` | Preserved offline initial-normal reference/replay bundle. Six profiles from VAH01/VAH17/VAH27, with selected source rows, elapsed-time origin and discharge-positive A conversion. No pack scaling or injected aging in this bundle. |
 
 Attribution and detailed source records:
 
 - [Runtime derivation and source references](docs/cmu-runtime-profiles.md),
   [catalog](profiles/battery/cmu_runtime/catalog.json), and
   [provenance](profiles/battery/cmu_runtime/provenance.json).
-- [Initial-normal profile guide](docs/cmu-evtol-normal-profile-guide.md) and the
-  per-profile metadata/manifest in `cmu_evtol_normal_soh100/`. Its verified initial
-  prefixes are distinct from the complete VAH01 input used by the runtime
-  catalog; the earlier bundle's integrity scope has not been retroactively changed.
 - [Current service guide](docs/cmu-service-guide.md). Runtime telemetry is a
   load-driven simulation derived from the reference, not a replay of measured
   pack voltage/current and not evidence of real-vehicle AI accuracy.
 
+The initial-normal six-profile bundle and its replay tooling are removed from
+the retained tree. Downloaded CMU originals and historical validation outputs
+are not retained locally after the approved purge. The runtime catalog, curve
+CSVs, provenance and `tools/battery_profiles/cmu_aging.py` remain; regeneration
+and the real-source publication test require reacquiring the pinned inputs
+described in [runtime derivation](docs/cmu-runtime-profiles.md#재생성).
+
 NASA battery products and tooling are no longer part of the active execution
-path. Historical sources and provenance were preserved separately; see
-[NASA retirement](docs/nasa-retirement.md). They are not a dependency of the CMU
-service and are not silently combined with CMU inputs.
+path. The retired code archive, downloaded originals and historical experiment
+outputs are also outside the retained tree; see
+[NASA retirement](docs/nasa-retirement.md). Remaining historical documents do
+not imply that their raw evidence is still available. NASA inputs are not a
+dependency of the CMU service and are not silently combined with CMU inputs.
 
 ## PX4-derived material
 

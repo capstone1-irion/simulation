@@ -145,11 +145,11 @@ python tools/arion_sim.py start --profile cmu_vah01_rpt006 --background
 
 `--profile` 생략 시 `cmu_vah01_rpt000`이 기본이다. 나중에 `restore`를 실행하면 **해당 run의 최초 선택**으로 돌아간다. 위 예시로 시작했다면 정상 기준이 아니라 `cmu_vah01_rpt006`으로 돌아간다.
 
-### 초기 정상 번들·NASA와의 구분
+### 제외된 초기 정상 번들·NASA와의 구분
 
-`profiles/battery/cmu_evtol_normal_soh100/`의 **초기 정상 6개 프로파일**은 보존된 오프라인 원본 추적·재생 자료다. VAH01/VAH17/VAH27의 초기 RPT와 첫 임무 자료이며, 위 네 런타임 프로파일과 별개다. 이를 삭제하거나 같은 학습 분할로 혼합하지 않는다. 사용법은 [초기 정상 프로파일 안내](cmu-evtol-normal-profile-guide.md)를 따른다.
+초기 정상 6개 프로파일 번들·재생 도구는 승인된 미사용 파일 정리로 삭제했으며 현재 실행 구성에 포함하지 않는다. 활성 `profiles/battery/cmu_runtime/`의 카탈로그·CSV·provenance와 `cmu_aging.py`는 유지한다. 내려받은 CMU 원본은 보관하지 않으므로 재생성·실원본 발행 시험에는 [고정 입력 재취득](cmu-runtime-profiles.md#재생성)이 필요하다. 서비스 실행은 이 원본 없이 보존된 카탈로그를 사용한다.
 
-NASA 구성은 활성 제품·실행 경로에서 제외되었고 새 서비스의 선택 목록에 없다. 과거 원본과 근거는 보존하지만 실행 의존성이 아니다. [NASA 폐기 안내](nasa-retirement.md)를 참고한다.
+NASA 구성은 활성 제품·실행 경로에서 제외되었고 새 서비스의 선택 목록에 없다. NASA 원본·보관 코드·과거 실험 산출물도 삭제했으며 서비스 의존성이 아니다. [NASA 폐기 안내](nasa-retirement.md)를 참고한다.
 
 ## 5. 모터 텔레메트리 이상 주입·해제
 
@@ -214,7 +214,7 @@ python tools/arion_sim.py world-reset
 python tools/arion_sim.py status
 ```
 
-서비스는 run의 초기 `world.sdf`에 CMU 기체를 include하고 `PX4_GZ_MODEL_NAME`으로 PX4를 **이미 존재하는 기체**에 연결한다. 앞선 동적 spawn 방식에서는 Gazebo 전체 reset이 기체를 제거했고, PX4를 그대로 둔 시계 역행은 lockstep 메시지 대기 지연을 일으켰다. 현재는 다음 순서로 시계 세대를 분리한다.
+서비스는 run마다 `custom_x500_cmu`를 생성해 초기 `world.sdf`에 include하고 `PX4_GZ_MODEL_NAME`으로 PX4를 **이미 존재하는 기체**에 연결한다. 제거된 초기 배터리/부하 연동 시험 모델을 필요로 하지 않는다. 앞선 동적 spawn 방식에서는 Gazebo 전체 reset이 기체를 제거했고, PX4를 그대로 둔 시계 역행은 lockstep 메시지 대기 지연을 일으켰다. 현재는 다음 순서로 시계 세대를 분리한다.
 
 1. 최신 Disarmed 상태를 확인하고 배터리 sender를 종료한다.
 2. 소유 PX4를 정상 종료한다. 비정상 종료이면 reset 성공으로 진행하지 않는다.
@@ -373,16 +373,16 @@ python tools/arion_sim.py init \
 
 이제 3절의 `profiles` → `start` → `status`부터 진행한다. 별도 PC의 설치·실행 결과는 그 PC에서 확인해야 하며, 아래의 기존 통합 관측을 그대로 승계하지 않는다.
 
-## 9. 현재 확인된 범위와 남은 확인
+## 9. 과거 확인 이력과 남은 확인
 
-다음은 실제 로컬 통합 실행과 저장 원문 재계산으로 확인한 범위다. 문서 작성 자체가 새 빌드·시험·비행을 수행했다는 뜻은 아니다. 최종 run은 약289.70초 동안 대상 메시지13,717개를 저장했으며, 원문 전체가 PX4 system36/component1이고 종료 summary와 개수가 일치했다. `verified-runtime/parent-readback.json` 및 `final-stop.json`으로 종료·수신 근거를 구분해 보존한다.
+다음은 당시 실제 로컬 통합 실행과 저장 원문 재계산으로 확인한 **과거 이력**이다. 이 문서의 다른 절에 나오는 수신·비행 관측도 같은 구분을 따른다. 승인된 정리 후 해당 raw 로그와 `verified-runtime/`의 검증 산출물은 로컬에 보관하지 않으므로 현재 파일로 재대조할 수 없다. 문서 갱신은 새 빌드·시험·비행이 아니다. 당시 최종 run은 약289.70초 동안 대상 메시지13,717개를 저장했으며, 원문 전체가 PX4 system36/component1이고 종료 summary와 개수가 일치했다고 기록했다.
 
 | 항목 | 상태 |
 |---|---|
 | 네 CMU 프로파일 지상 선택, 수신 원문 전압 대조 | 확인됨 |
 | 7초 pause 뒤 재개·수신 복구 | 확인됨. pause 중 반복 송신과 새 센서 측정은 구분해야 함 |
-| 지상 `world-reset` 뒤 기체·PX4·필수 메시지 수신 복구 | 재확인 통과. 통합 기록 `verified-runtime/ground-reset-result.json`의 `passed: true`; 수신 공백을 포함한 재시작 방식 |
-| world-reset 후 PX4 epoch 1에서 목표 3m 순차 비행 | 정상 100% → 열화 84.812594%의 두 차례 이륙·호버·착륙·자동 Disarm 통과. `verified-runtime/repeated-flights-result.json`의 `passed: true` |
+| 지상 `world-reset` 뒤 기체·PX4·필수 메시지 수신 복구 | 당시 재확인 통과 기록. 수신 공백을 포함한 재시작 방식; 원문·결과 파일은 미보관 |
+| world-reset 후 PX4 epoch 1에서 목표 3m 순차 비행 | 당시 정상 100% → 열화 84.812594%의 두 차례 이륙·호버·착륙·자동 Disarm 통과 기록; 원문·결과 파일은 미보관 |
 | 매 비행의 모터 1·4 이상 주입·해제 | 전류 1.6/RPM 0.85 주입과 `clear`의 수신값 변화 확인. 공중 reset 거부도 확인 |
 | 최종 서비스 종료·소유 자원 회수 | 확인 완료. CLI `stop` 후 `stopped`, 오류 없음, 현·이전 epoch의 모든 소유 프로세스 exit0·강제kill/잔류 그룹 없음, IPC/control socket 정리 확인 |
 | 모든 프로파일의 반복 비행, 다른 PC 재현, 대규모 시험·24/7 내구성 | 수행하지 않음 |
@@ -406,6 +406,5 @@ python tools/arion_sim.py init \
 - 프로파일의 실측·추정·가정 구분: [CMU 런타임 프로파일](cmu-runtime-profiles.md), [catalog](../profiles/battery/cmu_runtime/catalog.json), [provenance](../profiles/battery/cmu_runtime/provenance.json)
 - 원래 부하 연동 모델과 레거시 기본값: [coupled-power-model.md](coupled-power-model.md)
 - 수신 형식·freshness·회전: [공용 MAVLink 수집기](../tools/mavlink_collector/README.md)
-- 보존된 오프라인 초기 자료: [초기 정상 프로파일 안내](cmu-evtol-normal-profile-guide.md)
 - 활성 경로에서 제외한 자료: [NASA 폐기 안내](nasa-retirement.md)
 - 자료 출처 고지: [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)

@@ -1,5 +1,7 @@
 # 모터 고정값 연동 실행 가이드 — Ubuntu
 
+FixedMotor Plugin·`custom_x500`·관련 시험은 현재 모터 회귀 의존성이므로 유지한다. 제거된 고정 배터리/초기 연동 비행 도구는 필요하지 않다. 과거 실행 로그·검증 산출물은 정리 후 미보관이며, 이 문서 갱신은 새 시험 결과가 아니다.
+
 ## 1. 프로그램 역할
 
 | 프로그램/파일 | 역할 |
@@ -157,7 +159,7 @@ python -m unittest -v \
   test_gazebo_motor test_px4_console test_e2e_safety.RealShutdownRegressionTest
 ```
 
-배터리/overlay는 `docs/sitl-overlay-build.md`의 별도 명령과 필수 `ARION_OVERLAY_TEST_ROOT`를 따른다. CMU/운영 서비스는 각각 `docs/cmu-evtol-normal-profile-guide.md`, `docs/cmu-service-guide.md`를 따른다.
+배터리/overlay는 [SITL overlay 안내](sitl-overlay-build.md)의 별도 명령과 필수 `ARION_OVERLAY_TEST_ROOT`를 따른다. CMU 산정은 [런타임 프로파일](cmu-runtime-profiles.md), 운영은 [CMU 서비스 가이드](cmu-service-guide.md)를 따른다. 실원본 산정·발행 시험에는 제거된 고정 입력의 재취득이 필요하다.
 
 두 번째 명령에는 실제 Disarmed 시뮬레이터에서 값 비교가 끝난 뒤 종료 쓰기·프로세스 정리 중 실패를 주입하는 회귀시험도 포함된다. 그 실행의 `report.json`은 의도대로 `passed=false`가 되어야 해당 회귀시험이 통과한다. 콜백·워커 수명 시험은 AddressSanitizer/UndefinedBehaviorSanitizer를 사용한 별도 C++ 단위 시험이다. 실제 Bridge C++·pthread·pinned ModuleBase/POSIX task 구현으로 지연 진입, 초기화/생성 실패, native join 실패·동시 stop·세대 분리를 검사한다. 초기화된 시뮬레이션 시계를 멈추는 단위 seam과 실제 native wrapper 종료를 지연하는 시험도 있다. 일반 `usleep`이나 시험 쪽 join을 제품 종료의 근거로 삼지 않으며, 실패 뒤 fixture 안전 정리는 판정 이후 별도로 기록한다. PX4 서비스·Transport는 fixture이므로 실제 시뮬레이터 pause나 텔레메트리의 증거가 아니다. 로컬 Python 프로세스로 만드는 종료·descriptor 단위 fixture도 실제 Gazebo 값 시험과 구분한다. 정상 전달 성공 여부는 위 전체 고정값 전달 시험을 따로 실행하여 확인한다. Bridge 단위 부산물은 `ARION_TEST_ARTIFACT_ROOT`를 우선 사용하며, 다른 기존 시험까지 같은 폴더에 저장하려면 위처럼 `ARION_TEST_ROOT`도 함께 지정한다.
 
