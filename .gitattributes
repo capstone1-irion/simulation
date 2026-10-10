@@ -1,7 +1,0 @@
-# Unified patch context intentionally has prefix spaces/tabs.
-# Check the applied source separately; do not reformat patch syntax.
-patches/**/*.patch -whitespace
-
-# Dataset manifests hash exact CSV bytes, including existing CRLF.
-# Preserve line endings and do not lint data rows as source whitespace.
-*.csv -text -whitespace

@@ -1,0 +1,38 @@
+{
+  "schema": "capstone.command_load.v1",
+  "command_max_rad_s": 1000.0,
+  "auxiliary_current_a": 0.5,
+  "max_gap_s": 0.5,
+  "bench_voltage_v": 16.0,
+  "throttle": [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00],
+  "motor_current_a": [1.44, 1.87, 2.29, 2.86, 3.60, 4.53, 5.61, 6.78, 7.92, 9.20, 10.59, 12.11, 13.81, 15.68, 16.37],
+  "source": {
+    "scope_ko": "PX4 원래 명령을 16 V 벤치 throttle에 대응시킨 부하 근사다. 실제 RPM, ESC duty, 전류 측정 또는 전기·추진 결합 보정이 아니다.",
+    "motor": "AIR2216II-KV920",
+    "propeller": "T1045II",
+    "bench_table_origin": "V1 user-provided X500MotorSpec.png, transcribed in X500_모터_사양_확인.md",
+    "bench_table_status": "retained_V1_transcription; table columns inspected; not a new physical benchmark or image re-reading",
+    "bench_table_image_sha256_computed_during_migration": "5f9a30c7e64b3d6292276bf10db312a8aa7732273d154e094a88f1d21df1c115",
+    "bench_table_document_sha256_computed_during_migration": "fcb662512979d7c57f29e9048597a67c5891d41d372c9c78ef51fc44d1609d1f",
+    "prior_model_relative_to_V1": "simulation/include/arion/CoupledPowerModel.hpp",
+    "prior_model_sha256_computed_during_migration": "f67f0237c041b0bf3263550fe35b30bd76485b3ea59c81ce2eba4d239488d2dd",
+    "prior_explanation_relative_to_V1": "simulation/docs/coupled-power-model.md",
+    "prior_explanation_sha256_computed_during_migration": "a41611c53fff00309f9a9bd1e773afdbfd9cc9c6ca154778d8bb36641f3608ae",
+    "source_image_license": "not established in retained V1 material; no new open-license claim and no image redistribution",
+    "px4_commit": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4",
+    "gz_models_commit": "b6127f4ec20de867e215fb5f78ae88b80f371909",
+    "command_limit_source": "external/PX4-Autopilot/Tools/simulation/gz/models/x500/model.sdf: four maxRotVelocity values",
+    "x500_sdf_sha256_computed_during_migration": "cfe92f98360967faa895b77aa8a6fff3fc9b290286e94e45297c4bdd7b62fbf9"
+  },
+  "assumptions": {
+    "normalization": "min(command_rad_s, command_max_rad_s) / command_max_rad_s; only finite nonnegative commands are accepted",
+    "low_throttle": "below the first knot: motor_current_a[0] * (throttle / throttle[0])^2; assumed, not measured",
+    "within_table": "piecewise linear interpolation, no above-table extrapolation",
+    "auxiliary_current": "0.5 A constant retained V1 auxiliary-load assumption, not measured avionics current",
+    "time_integration": "previous accepted current is held over [previous_sim_time_s, sim_time_s), only while dt <= max_gap_s",
+    "max_gap": "0.5 s simulation-time safety policy, not a battery material property or network wall-time timeout",
+    "pause": "equal simulation timestamps do not integrate; a fresh command at the same timestamp may replace instantaneous demand",
+    "temperature": "not modeled; no numeric temperature is returned",
+    "voltage_feedback": "none: reported voltage changes do not change modeled current or Gazebo motor force"
+  }
+}

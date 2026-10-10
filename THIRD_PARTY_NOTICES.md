@@ -1,67 +1,27 @@
 # Third-party notices
 
-## CMU eVTOL Battery Dataset — active battery reference
+## PX4 Gazebo x500 model settings
 
-The battery data are attributed to **Alexander Bills et al., eVTOL Battery
-Dataset, CMU, version 3**, DOI `10.1184/R1/14226830.v3`. The pinned dataset
-metadata records the data license as **CC BY 4.0**. Source URLs, file identities,
-checksums and transformation provenance are retained with the products below;
-the original laboratory data must not be presented as this project's drone
-measurements.
+`models/capstone_x500/model.sdf` is a V2-owned experiment definition derived from the motor settings of PX4/PX4-gazebo-models, revision `b6127f4ec20de867e215fb5f78ae88b80f371909`. It includes the unmodified `x500_base` dependency and redirects the four motor command subscriptions through the V2 relay. The source checkout is not overwritten. The source license notice is retained below.
 
-| Derived product | Use and changes to the source |
-|---|---|
-| `profiles/battery/cmu_runtime/` | Active runtime reference. Four measured RPT stages from the complete VAH01 lifetime CSV; derived relative capacity, effective DC 1-second resistance estimates and SOC-indexed equivalent OCV curves. The 4S2P pack, initial SOC and pack scaling are simulation assumptions. Curves are not measured equilibrium OCV. |
-
-Attribution and detailed source records:
-
-- [Runtime derivation and source references](docs/cmu-runtime-profiles.md),
-  [catalog](profiles/battery/cmu_runtime/catalog.json), and
-  [provenance](profiles/battery/cmu_runtime/provenance.json).
-- [Current service guide](docs/cmu-service-guide.md). Runtime telemetry is a
-  load-driven simulation derived from the reference, not a replay of measured
-  pack voltage/current and not evidence of real-vehicle AI accuracy.
-
-The initial-normal six-profile bundle and its replay tooling are removed from
-the retained tree. Downloaded CMU originals and historical validation outputs
-are not retained locally after the approved purge. The runtime catalog, curve
-CSVs, provenance and `tools/battery_profiles/cmu_aging.py` remain; regeneration
-and the real-source publication test require reacquiring the pinned inputs
-described in [runtime derivation](docs/cmu-runtime-profiles.md#재생성).
-
-NASA battery products and tooling are no longer part of the active execution
-path. The retired code archive, downloaded originals and historical experiment
-outputs are also outside the retained tree; see
-[NASA retirement](docs/nasa-retirement.md). Remaining historical documents do
-not imply that their raw evidence is still available. NASA inputs are not a
-dependency of the CMU service and are not silently combined with CMU inputs.
-
-## PX4-derived material
-
-`models/custom_x500/model.sdf` is derived from PX4-Autopilot v1.17.0
-(`d6f12ad1c4f70ad3230afd7d86e971421e02fef4`). Stock motor physics is retained.
-The PX4 integration follows its module lifecycle template. The original license
-applies to that material:
-
-```text
 BSD 3-Clause License
 
-Copyright (c) 2012 - 2023, PX4 Development Team
+Copyright (c) 2022, PX4 Autopilot for Drones
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
 
-* Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
 
-* Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -73,4 +33,15 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-```
+
+## Battery-derived data
+
+The source attribution, CC BY 4.0 metadata and original extraction limitations for the CMU eVTOL Battery Dataset version 3 are retained in `profiles/battery/provenance.json` and described in `docs/배터리모델.md`. V2 reorganizes existing derived values; it does not claim a new raw-data derivation, independent cells, or validation by the dataset authors. This notice does not assign an open license to the previously supplied motor specification image.
+
+## Karpathy guidelines
+
+`docs/karpathy-guidelines/SKILL.md` preserves the selected text from multica-ai/andrej-karpathy-skills revision `2c606141936f1eeef17fa3043a72095b4765b9c2`. Its frontmatter declares MIT. A separate LICENSE file was not present at the inspected pinned source, so no replacement license text was invented.
+
+## Dependencies
+
+The PX4 checkout, Gazebo system packages and Python dependencies retain their respective original licenses. They are not relicensed by this project's notices. The project has not selected an overall license for all newly authored V2 code.

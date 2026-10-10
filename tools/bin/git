@@ -1,0 +1,5 @@
+#!/bin/sh
+# 역할: 빌드 하위 작업이 호출하는 Git 연결도 시도당 120초로 제한한다.
+# 입력/출력: Git argv/종료 코드 그대로. 호출자: tools/build.py가 구성한 자식 PATH.
+# 원본 Git·PX4 파일·사용자 Git 설정은 수정하지 않는다.
+exec /usr/bin/timeout --kill-after=5s 120s /usr/bin/git "$@"

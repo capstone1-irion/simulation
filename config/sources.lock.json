@@ -1,0 +1,31 @@
+{
+  "px4": {
+    "repository": "https://github.com/PX4/PX4-Autopilot.git",
+    "tag": "v1.17.0",
+    "commit": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4",
+    "path": "external/PX4-Autopilot"
+  },
+  "gazebo_models": {
+    "repository": "https://github.com/PX4/PX4-gazebo-models.git",
+    "commit": "b6127f4ec20de867e215fb5f78ae88b80f371909"
+  },
+  "platform": {
+    "os": "Ubuntu 24.04",
+    "python": "3.12",
+    "gz_sim": "8.15.0",
+    "gz_transport": "13.6.0",
+    "gz_msgs": "10.4.0"
+  },
+  "submodules_for_sitl": [
+    "src/modules/mavlink/mavlink",
+    "Tools/simulation/gz",
+    "src/lib/events/libevents",
+    "src/drivers/gps/devices",
+    "src/lib/heatshrink/heatshrink",
+    "src/lib/crypto/monocypher",
+    "src/modules/uxrce_dds_client/Micro-XRCE-DDS-Client",
+    "src/lib/cdrstream/cyclonedds",
+    "src/lib/cdrstream/rosidl"
+  ],
+  "installation_note": "요청된 SITL 의존성만 fresh clone. 실기체/NuttX/Gazebo Classic 의존성은 받지 않음. 원본 수정 없음. 버전 고정은 기능 검증 성공을 뜻하지 않음."
+}

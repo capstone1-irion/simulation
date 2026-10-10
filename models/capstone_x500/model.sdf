@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 역할: 승인된 V2 실험 기체. 호출자: Gazebo 실행기, 실제 이름은 실행별로 지정한다.
+     참조: PX4 v1.17.0의 gz submodule b6127f4ec20de867e215fb5f78ae88b80f371909.
+     x500_base를 원본 그대로 merge하고 stock 모터의 입력 topic만 분리한다.
+     질량/관성/센서/모터 상수/관절/회전방향/slowdown은 원본을 유지한다. -->
+<sdf version="1.9">
+  <model name="capstone_x500">
+    <include merge="true">
+      <uri>model://x500_base</uri>
+    </include>
+    <!-- 시작부터 고정된 중계 경로. 누락/실패 시 정상 경로로 우회하지 않는다. -->
+    <plugin filename="libMotorFault.so" name="capstone::MotorFault"/>
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+      name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>rotor_0_joint</jointName>
+      <linkName>rotor_0</linkName>
+      <turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>1000.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed_applied</commandSubTopic>
+      <motorNumber>0</motorNumber>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+      <motorType>velocity</motorType>
+    </plugin>
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+      name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>rotor_1_joint</jointName>
+      <linkName>rotor_1</linkName>
+      <turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>1000.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed_applied</commandSubTopic>
+      <motorNumber>1</motorNumber>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+      <motorType>velocity</motorType>
+    </plugin>
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+      name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>rotor_2_joint</jointName>
+      <linkName>rotor_2</linkName>
+      <turningDirection>cw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>1000.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed_applied</commandSubTopic>
+      <motorNumber>2</motorNumber>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+      <motorType>velocity</motorType>
+    </plugin>
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+      name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>rotor_3_joint</jointName>
+      <linkName>rotor_3</linkName>
+      <turningDirection>cw</turningDirection>
+      <timeConstantUp>0.0125</timeConstantUp>
+      <timeConstantDown>0.025</timeConstantDown>
+      <maxRotVelocity>1000.0</maxRotVelocity>
+      <motorConstant>8.54858e-06</motorConstant>
+      <momentConstant>0.016</momentConstant>
+      <commandSubTopic>command/motor_speed_applied</commandSubTopic>
+      <motorNumber>3</motorNumber>
+      <rotorDragCoefficient>8.06428e-05</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>10</rotorVelocitySlowdownSim>
+      <motorType>velocity</motorType>
+    </plugin>
+  </model>
+</sdf>

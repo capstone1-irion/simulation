@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<!-- 역할: V2 실험용 평지 세계. 입력: runtime이 추가하는 기체 include. 출력: Gazebo 세계.
+     호출자: simulation.py. 원본 세계 파일을 덮어쓰거나 수정하지 않는다.
+     단위: m, s, kg; 세계 ENU, 중력 -Z. 센서는 server.config가 명시적으로 불러온다. -->
+<sdf version="1.9">
+  <world name="default">
+    <physics type="ode">
+      <max_step_size>0.004</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <gravity>0 0 -9.8</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type="adiabatic"/>
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <world_frame_orientation>ENU</world_frame_orientation>
+      <latitude_deg>47.397971057728974</latitude_deg>
+      <longitude_deg>8.546163739800146</longitude_deg>
+      <elevation>0</elevation>
+    </spherical_coordinates>
+    <scene><ambient>0.4 0.4 0.4 1</ambient><background>0.7 0.7 0.7 1</background></scene>
+    <light name="sun" type="directional">
+      <pose>0 0 500 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse><specular>0.3 0.3 0.3 1</specular>
+      <direction>0.1 0.6 -0.8</direction><cast_shadows>true</cast_shadows>
+    </light>
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision"><geometry><plane><normal>0 0 1</normal><size>500 500</size></plane></geometry></collision>
+        <visual name="visual"><geometry><plane><normal>0 0 1</normal><size>500 500</size></plane></geometry>
+          <material><ambient>0.8 0.8 0.8 1</ambient><diffuse>0.8 0.8 0.8 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

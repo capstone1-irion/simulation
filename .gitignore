@@ -1,61 +1,18 @@
-# Secrets and local configuration
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-
-# Editors and OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
-
-# Large/private experiment artifacts: keep outside Git
-/PX4-Autopilot/
-/experiments/
-data/
-datasets/
-logs/
-outputs/
-artifacts/
-checkpoints/
-*.ulg
-*.tlog
-*.bag
-*.mcap
-*.pt
-*.pth
-*.ckpt
-*.onnx
-*.h5
-*.hdf5
-
-# Python
+# 설치와 실행 부산물은 제출 코드와 분리한다.
 .venv/
-venv/
+external/
+hermes/
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-.ipynb_checkpoints/
-*.egg-info/
-
-# C++ and simulator builds
+# 기업 원자료·비밀정보·로컬 빌드 결과는 공유하지 않는다.
+log/
+*.BIN
+*.bin
+*.ulg
+.env
+.env.*
+*.pem
+*.key
 build/
-install/
-*.o
-*.a
-*.so
-*.so.*
-CMakeCache.txt
-CMakeFiles/
-compile_commands.json
-
-# Per-user continuous simulator configuration/state
-/config/service.local.json
-/.arion-service/
-/generated/
+dist/
+*.egg-info/

@@ -1,0 +1,11 @@
+# 역할: 팀원이 읽을 Python 버전·직접 의존성. 실행 진입점은 main.py.
+[project]
+name = "capstone-v2"
+version = "0.1.0"
+description = "PX4/Gazebo 실험, 배터리 모델, 수신 전용 데이터 처리"
+requires-python = ">=3.12,<3.13"
+dependencies = ["pymavlink==2.4.50"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
